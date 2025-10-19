@@ -138,24 +138,62 @@
     
     <script type="module">
         document.addEventListener('DOMContentLoaded', async function() {
-            // --- Global Variables ---
-            const stockData = [
-                { "ticker": "TLKM", "name": "Telkom Indonesia (Persero) Tbk.", "price": 3050, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ASII", "name": "Astra International Tbk.", "price": 5100, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BREN", "name": "Barito Renewables Energy Tbk", "price": 9000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AMMN", "name": "Amman Mineral Internasional Tbk", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNVR", "name": "Unilever Indonesia Tbk.", "price": 3000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ICBP", "name": "Indofood CBP Sukses Makmur Tbk.", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false}, { "ticker": "MDKA", "name": "Merdeka Copper Gold Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "ADRO", "name": "Adaro Energy Indonesia Tbk.", "price": 2700, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PTBA", "name": "Bukit Asam Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "WIFI", "name": "Solusi Sinergi Digital Tbk.", "price": 60, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "INDF", "name": "Indofood Sukses Makmur Tbk.", "price": 6200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "KLBF", "name": "Kalbe Farma Tbk.", "price": 1500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "CPIN", "name": "Charoen Pokphand Indonesia Tbk", "price": 5200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "EXCL", "name": "XL Axiata Tbk.", "price": 2300, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "JSMR", "name": "Jasa Marga (Persero) Tbk.", "price": 5000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AKRA", "name": "AKR Corporindo Tbk.", "price": 1600, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNTR", "name": "United Tractors Tbk.", "price": 23000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BRPT", "name": "Barito Pacific Tbk.", "price": 1000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "INCO", "name": "Vale Indonesia Tbk.", "price": 4000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PGAS", "name": "Perusahaan Gas Negara Tbk.", "price": 1200, "isSyariah": true, "inSpecialMonitoring": false }
-            ];
-            const GEMINI_API_KEY = ""; // Kunci API akan diinjeksi oleh lingkungan
+            // --- Global Variables & Configuration ---
+            const stockData = [ { "ticker": "TLKM", "name": "Telkom Indonesia (Persero) Tbk.", "price": 3050, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ASII", "name": "Astra International Tbk.", "price": 5100, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BREN", "name": "Barito Renewables Energy Tbk", "price": 9000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AMMN", "name": "Amman Mineral Internasional Tbk", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNVR", "name": "Unilever Indonesia Tbk.", "price": 3000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ICBP", "name": "Indofood CBP Sukses Makmur Tbk.", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false}, { "ticker": "MDKA", "name": "Merdeka Copper Gold Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "ADRO", "name": "Adaro Energy Indonesia Tbk.", "price": 2700, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PTBA", "name": "Bukit Asam Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "WIFI", "name": "Solusi Sinergi Digital Tbk.", "price": 60, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "INDF", "name": "Indofood Sukses Makmur Tbk.", "price": 6200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "KLBF", "name": "Kalbe Farma Tbk.", "price": 1500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "CPIN", "name": "Charoen Pokphand Indonesia Tbk", "price": 5200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "EXCL", "name": "XL Axiata Tbk.", "price": 2300, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "JSMR", "name": "Jasa Marga (Persero) Tbk.", "price": 5000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AKRA", "name": "AKR Corporindo Tbk.", "price": 1600, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNTR", "name": "United Tractors Tbk.", "price": 23000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BRPT", "name": "Barito Pacific Tbk.", "price": 1000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "INCO", "name": "Vale Indonesia Tbk.", "price": 4000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PGAS", "name": "Perusahaan Gas Negara Tbk.", "price": 1200, "isSyariah": true, "inSpecialMonitoring": false } ];
+            const GEMINI_API_KEY = ""; 
             const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxMMXZKQ60B7A_stn_YNPNFAtSw6-pAXJJZnu2JjCWBHGlNQGwJw3TH8V5F_3KcNGjS/exec'; 
             const PRICE_API_URL = 'https://script.google.com/macros/s/AKfycbzn_lUgPbqVeLFqGboZth6OYBmW6ZXnQamp7s78M6yoOZK98nkXTSO4XcTxyizWTAj57Q/exec';
             
-            // --- Core Application Logic ---
+            // --- Caching Configuration ---
+            const CACHE_PREFIX = 'stockAnalyzerCache_';
+            const PRICE_CACHE_TTL = 2 * 60 * 1000; // 2 menit
+            const SHEET_CACHE_TTL = 5 * 60 * 1000; // 5 menit
+
+            // --- Caching Functions ---
+            function setCache(key, data, ttl) {
+                const cacheKey = CACHE_PREFIX + key;
+                const item = {
+                    data: data,
+                    expiry: new Date().getTime() + ttl,
+                };
+                sessionStorage.setItem(cacheKey, JSON.stringify(item));
+            }
+
+            function getCache(key) {
+                const cacheKey = CACHE_PREFIX + key;
+                const itemStr = sessionStorage.getItem(cacheKey);
+                if (!itemStr) return null;
+                const item = JSON.parse(itemStr);
+                if (new Date().getTime() > item.expiry) {
+                    sessionStorage.removeItem(cacheKey);
+                    return null;
+                }
+                return item.data;
+            }
             
+            function clearPerformanceCache() {
+                sessionStorage.removeItem(CACHE_PREFIX + 'performance_daily');
+                sessionStorage.removeItem(CACHE_PREFIX + 'performance_weekly');
+                sessionStorage.removeItem(CACHE_PREFIX + 'performance_monthly');
+            }
+
+            // --- Core Application Logic ---
             async function fetchStockPrice(ticker) {
+                const cacheKey = `price_${ticker}`;
+                const cachedData = getCache(cacheKey);
+                if (cachedData) {
+                    return cachedData;
+                }
+                
                 const url = `${PRICE_API_URL}?ticker=${ticker}`;
                 try {
                     const response = await fetch(url);
                     const data = await response.json();
                     if (data.price && data.ticker) {
                         const stockInfo = stockData.find(s => s.ticker === data.ticker);
-                        return { ...data, name: stockInfo?.name || data.ticker };
+                        const result = { ...data, name: stockInfo?.name || data.ticker };
+                        setCache(cacheKey, result, PRICE_CACHE_TTL);
+                        return result;
                     }
                     return null;
                 } catch (error) {
@@ -223,6 +261,7 @@
                     });
                     
                     localStorage.setItem('lastRecommendationDate', new Date().toISOString().split('T')[0]);
+                    clearPerformanceCache();
                     document.getElementById('ai-recommendation-status').textContent = "Rekomendasi AI untuk hari ini berhasil disimpan!";
                     await renderPerformance();
 
@@ -266,12 +305,18 @@
                     tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-500">URL Google Apps Script belum dikonfigurasi.</td></tr>`;
                     return;
                 }
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Memuat data performa dari Google Sheet...</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Memuat data performa...</td></tr>`;
                 
                 try {
-                    const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=ai_recommendations&period=${period}`);
-                    const dataFromSheet = await response.json();
+                    const cacheKey = `performance_${period}`;
+                    let dataFromSheet = getCache(cacheKey);
 
+                    if (!dataFromSheet) {
+                        const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=ai_recommendations&period=${period}`);
+                        dataFromSheet = await response.json();
+                        setCache(cacheKey, dataFromSheet, SHEET_CACHE_TTL);
+                    }
+                    
                     if (!dataFromSheet || dataFromSheet.length === 0) {
                         tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Tidak ada riwayat rekomendasi pada periode ini.</td></tr>`;
                         return;
@@ -330,6 +375,7 @@
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
                     showToast(`${ticker} berhasil ditambahkan ke daftar lacak.`);
+                    sessionStorage.removeItem(CACHE_PREFIX + 'manual_tracking');
                     input.value = '';
                 } catch (error) {
                      showToast(`Gagal menambahkan ${ticker}: ${error.message}`);
@@ -348,6 +394,7 @@
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
                      showToast(`Saham berhasil dihapus.`);
+                     sessionStorage.removeItem(CACHE_PREFIX + 'manual_tracking');
                  } catch (error) {
                      showToast(`Gagal menghapus: ${error.message}`);
                  }
@@ -363,8 +410,13 @@
                 tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat data dari Google Sheet...</td></tr>`;
 
                 try {
-                    const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=manual_tracking`);
-                    const dataFromSheet = await response.json();
+                    const cacheKey = 'manual_tracking';
+                    let dataFromSheet = getCache(cacheKey);
+                    if (!dataFromSheet) {
+                        const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=manual_tracking`);
+                        dataFromSheet = await response.json();
+                        setCache(cacheKey, dataFromSheet, SHEET_CACHE_TTL);
+                    }
 
                     if (!dataFromSheet || dataFromSheet.length === 0) { 
                         tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Anda belum menambahkan saham apapun ke daftar lacak.</td></tr>`; 
@@ -460,4 +512,3 @@
     </script>
 </body>
 </html>
-
