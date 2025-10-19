@@ -222,6 +222,14 @@
             }
 
             async function getAIRecommendations() {
+                const lastRecDate = localStorage.getItem('lastRecommendationDate');
+                const today = new Date().toISOString().split('T')[0];
+                if (lastRecDate === today) {
+                    showToast("Rekomendasi untuk hari ini sudah dibuat.");
+                    document.getElementById('ai-recommendation-status').textContent = "Rekomendasi AI untuk hari ini telah diterima.";
+                    return;
+                }
+
                 if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
                     showToast("URL Google Apps Script belum dikonfigurasi.");
                     return;
