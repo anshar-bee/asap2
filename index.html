@@ -71,7 +71,29 @@
                     </button>
                 </section>
 
-                <section id="performance"><div class="flex flex-col md:flex-row justify-between items-center mb-4"><h2 class="text-xl font-bold text-gray-700 mb-2 md:mb-0">Lacak Performa Rekomendasi AI</h2><div id="time-filter" class="flex items-center bg-white rounded-lg shadow-sm p-1 space-x-1"><button data-period="daily" class="time-filter-btn active-filter font-semibold py-2 px-4 rounded-md text-sm">Harian</button><button data-period="weekly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Pekanan</button><button data-period="monthly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Bulanan</button></div></div><div class="bg-white rounded-2xl shadow-lg overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" class="px-6 py-3">Saham</th><th scope="col" class="px-6 py-3">Tgl Rekomendasi</th><th scope="col" class="px-6 py-3 text-right">Harga Awal</th><th scope="col" class="px-6 py-3 text-right">Harga Terkini</th><th scope="col" class="px-6 py-3 text-right">Gain (%)</th></tr></thead><tbody id="performance-table-body"></tbody></table></div><div id="performance-pagination" class="flex justify-between items-center mt-4 px-6 pb-4"></div></div></section>
+                <section id="performance">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-700 mb-2 md:mb-0">Lacak Performa Rekomendasi AI</h2>
+                        <div class="flex items-center space-x-2">
+                             <div id="time-filter" class="flex items-center bg-white rounded-lg shadow-sm p-1 space-x-1">
+                                <button data-period="daily" class="time-filter-btn active-filter font-semibold py-2 px-4 rounded-md text-sm">Harian</button>
+                                <button data-period="weekly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Pekanan</button>
+                                <button data-period="monthly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Bulanan</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                    <tr><th scope="col" class="px-6 py-3">Saham</th><th scope="col" class="px-6 py-3">Tgl Rekomendasi</th><th scope="col" class="px-6 py-3 text-right">Harga Awal</th><th scope="col" class="px-6 py-3 text-right">Harga Terkini</th><th scope="col" class="px-6 py-3 text-right">Gain (%)</th><th scope="col" class="px-6 py-3 text-center">Aksi</th></tr>
+                                </thead>
+                                <tbody id="performance-table-body"></tbody>
+                            </table>
+                        </div>
+                        <div id="performance-pagination" class="flex justify-between items-center mt-4 px-6 pb-4"></div>
+                    </div>
+                </section>
             </div>
             
             <!-- Manual Analysis Tab -->
@@ -141,7 +163,7 @@
         document.addEventListener('DOMContentLoaded', async function() {
             // --- Global Variables & Configuration ---
             const stockData = [ { "ticker": "TLKM", "name": "Telkom Indonesia (Persero) Tbk.", "price": 3050, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ASII", "name": "Astra International Tbk.", "price": 5100, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BREN", "name": "Barito Renewables Energy Tbk", "price": 9000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AMMN", "name": "Amman Mineral Internasional Tbk", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNVR", "name": "Unilever Indonesia Tbk.", "price": 3000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ICBP", "name": "Indofood CBP Sukses Makmur Tbk.", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false}, { "ticker": "MDKA", "name": "Merdeka Copper Gold Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "ADRO", "name": "Adaro Energy Indonesia Tbk.", "price": 2700, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PTBA", "name": "Bukit Asam Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "WIFI", "name": "Solusi Sinergi Digital Tbk.", "price": 60, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "INDF", "name": "Indofood Sukses Makmur Tbk.", "price": 6200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "KLBF", "name": "Kalbe Farma Tbk.", "price": 1500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "CPIN", "name": "Charoen Pokphand Indonesia Tbk", "price": 5200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "EXCL", "name": "XL Axiata Tbk.", "price": 2300, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "JSMR", "name": "Jasa Marga (Persero) Tbk.", "price": 5000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AKRA", "name": "AKR Corporindo Tbk.", "price": 1600, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNTR", "name": "United Tractors Tbk.", "price": 23000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BRPT", "name": "Barito Pacific Tbk.", "price": 1000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "INCO", "name": "Vale Indonesia Tbk.", "price": 4000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PGAS", "name": "Perusahaan Gas Negara Tbk.", "price": 1200, "isSyariah": true, "inSpecialMonitoring": false } ];
-            const GEMINI_API_KEY = "AIzaSyCHjRY2LohqMZ-mhb26mJXAyJSzO64elBg"; 
+            const GEMINI_API_KEY = ""; 
             const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynNx1bg-6xRHjST0CMtbEqgAY6nCOidZ_mMoA4oI6-Kt4ozsTCXZNAt7_PE4P3mvim/exec'; 
             const PRICE_API_URL = 'https://script.google.com/macros/s/AKfycbzn_lUgPbqVeLFqGboZth6OYBmW6ZXnQamp7s78M6yoOZK98nkXTSO4XcTxyizWTAj57Q/exec';
             
@@ -279,7 +301,11 @@
                     await renderPerformance('daily', 1);
 
                 } catch (error) {
-                    showToast(`Gagal mendapatkan rekomendasi AI: ${error.message}`);
+                    let errorMessage = `Gagal mendapatkan rekomendasi AI: ${error.message}`;
+                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                        errorMessage = "Gagal terhubung ke Google Sheets. Pastikan skrip Anda sudah di-deploy dengan akses 'Anyone'.";
+                    }
+                    showToast(errorMessage);
                     document.getElementById('ai-recommendation-status').textContent = `Gagal mendapatkan rekomendasi AI. Coba lagi nanti.`;
                     console.error("Error getting AI recommendation:", error);
                 }
@@ -364,17 +390,46 @@
                         row.className = `bg-white border-b hover:bg-gray-50 ${data.is_top_pick ? 'top-pick-highlight' : ''}`;
                         const gainClass = data.gain > 0 ? 'positive-gain' : (data.gain < 0 ? 'negative-gain' : 'neutral-gain');
                         const gainIcon = data.gain > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
-                        row.innerHTML = `<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${data.ticker} ${data.is_top_pick ? '<i class="fas fa-star text-yellow-400 ml-1"></i>' : ''}</td><td class="px-6 py-4">${data.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.initialPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.currentPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right"><span class="font-semibold ${gainClass}">${data.gain > 0 ? '+' : ''}${data.gain.toFixed(2)}% ${data.gain !== 0 ? `<i class="fas ${gainIcon} ml-1 text-xs"></i>` : ''}</span></td>`;
+                        row.innerHTML = `<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${data.ticker} ${data.is_top_pick ? '<i class="fas fa-star text-yellow-400 ml-1"></i>' : ''}</td><td class="px-6 py-4">${data.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.initialPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.currentPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right"><span class="font-semibold ${gainClass}">${data.gain > 0 ? '+' : ''}${data.gain.toFixed(2)}% ${data.gain !== 0 ? `<i class="fas ${gainIcon} ml-1 text-xs"></i>` : ''}</span></td><td class="px-6 py-4 text-center"><button data-id="${data.id}" class="remove-ai-btn text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>`;
                         tableBody.appendChild(row);
                     });
 
+                    document.querySelectorAll('.remove-ai-btn').forEach(button => {
+                        button.addEventListener('click', (e) => removeAiRecommendation(e.currentTarget.dataset.id));
+                    });
+                    
                     renderPagination('performance-pagination', currentPageAI, totalPages, (newPage) => renderPerformance(period, newPage));
 
                 } catch (error) {
                     console.error("Error fetching performance data:", error);
-                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-500">Gagal memuat data performa. Periksa konsol untuk detail.</td></tr>`;
+                     let errorMessage = "Gagal memuat data performa. Periksa konsol untuk detail.";
+                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                        errorMessage = "Gagal terhubung ke Google Sheets. Pastikan skrip Anda sudah di-deploy dengan akses 'Anyone'.";
+                    }
+                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-500">${errorMessage}</td></tr>`;
                 }
             }
+            
+            async function removeAiRecommendation(id) {
+                if (confirm(`Apakah Anda yakin ingin menghapus rekomendasi saham ini?`)) {
+                    try {
+                        await fetch(GOOGLE_APP_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({ action: 'deleteAiRecommendation', id: id }),
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                        });
+                        showToast(`Rekomendasi berhasil dihapus.`);
+                        clearPerformanceCache();
+                        const activeFilter = document.querySelector('.time-filter-btn.active-filter');
+                        const period = activeFilter.dataset.period;
+                        renderPerformance(period, currentPageAI); // Re-render the current page
+                    } catch(error) {
+                        showToast(`Gagal menghapus data: ${error.message}`);
+                        console.error("Error deleting AI recommendation:", error);
+                    }
+                }
+            }
+
 
             // --- Manual Tracking Functions ---
             async function addStockToManualTracking() {
@@ -481,7 +536,11 @@
                     renderPagination('manual-performance-pagination', currentPageManual, totalPages, (newPage) => renderManualPerformance(newPage));
 
                 } catch (error) {
-                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Gagal memuat data. Periksa konsol untuk detail.</td></tr>`; 
+                    let errorMessage = "Gagal memuat data. Periksa konsol untuk detail.";
+                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                        errorMessage = "Gagal terhubung ke Google Sheets. Pastikan skrip Anda sudah di-deploy dengan akses 'Anyone'.";
+                    }
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">${errorMessage}</td></tr>`; 
                     console.error("Error fetching manual tracking data:", error);
                 }
             }
@@ -579,3 +638,4 @@
     </script>
 </body>
 </html>
+
