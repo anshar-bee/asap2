@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisa Saham Pro (Google Sheets)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" xintegrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+        .positive-gain { color: #10B981; }
+        .negative-gain { color: #EF4444; }
+        .neutral-gain { color: #6B7280; }
+        .tab-btn.active { border-color: #3B82F6; color: #2563EB; font-weight: 600; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #2d3748; color: white; padding: 1rem 2rem; border-radius: 0.5rem; z-index: 100; opacity: 0; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; transform: translate(-50%, 10px); }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3498db; width: 40px; height: 40px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .time-filter-btn.active-filter { background-color: #3B82F6; color: white; }
+        #manual-analysis-result h4 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+        #manual-analysis-result p { margin-bottom: 1rem; }
+        .top-pick-highlight { background-color: #D1FAE5 !important; }
+        .top-pick-highlight td:first-child { font-weight: bold; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "sortablejs": "https://aistudiocdn.com/sortablejs@^1.15.6",
+    "safevalues/": "https://aistudiocdn.com/safevalues@^1.2.0/",
+    "safevalues": "https://cdn.jsdelivr.net/npm/safevalues@^1.2.0/dist/mjs/index.min.js",
+    "@monaco-editor/loader": "https://aistudiocdn.com/@monaco-editor/loader@^1.6.1",
+    "markdown-it": "https://aistudiocdn.com/markdown-it@^14.1.0"
+  }
+}
+</script>
+</head>
+<body class="text-gray-800">
+
+    <div id="app" class="container mx-auto p-4 md:p-8">
+
+        <!-- Header -->
+        <header class="mb-8">
+             <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-lg">
+                 <div class="flex items-center space-x-4">
+                    <div class="bg-blue-600 p-3 rounded-full"><i class="fas fa-chart-line text-white text-2xl"></i></div>
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Analisa Saham Pro</h1>
+                        <p id="current-date" class="text-gray-500 text-sm">Memuat data...</p>
+                    </div>
+                </div>
+                 <div class="mt-4 md:mt-0 text-sm text-gray-600 flex items-center">
+                    <i class="fab fa-google-drive mr-2 text-green-500"></i>
+                    <span>Didukung oleh Gemini & Google Sheets</span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main>
+            <!-- Tab Navigation -->
+            <div class="mb-6"><div class="border-b border-gray-200"><nav class="-mb-px flex space-x-8" aria-label="Tabs"><button id="tab-btn-dashboard" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Dashboard</button><button id="tab-btn-manual" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Analisis Manual</button><button id="tab-btn-tracking" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Lacak Manual</button></nav></div></div>
+            
+            <!-- Dashboard Tab -->
+            <div id="tab-content-dashboard" class="tab-content">
+                <section id="ai-recommendation-generator" class="mb-8 bg-white p-6 rounded-2xl shadow-lg text-center">
+                    <h2 class="text-xl font-bold text-gray-800">Rekomendasi Saham Hari Ini</h2>
+                    <p id="ai-recommendation-status" class="text-gray-500 mt-2 mb-4">Menganalisis pasar untuk rekomendasi hari ini...</p>
+                    <button id="get-ai-recommendation-btn" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300">
+                        <i class="fas fa-wand-magic-sparkles mr-2"></i> Dapatkan Rekomendasi AI Hari Ini
+                    </button>
+                </section>
+
+                <section id="performance"><div class="flex flex-col md:flex-row justify-between items-center mb-4"><h2 class="text-xl font-bold text-gray-700 mb-2 md:mb-0">Lacak Performa Rekomendasi AI</h2><div id="time-filter" class="flex items-center bg-white rounded-lg shadow-sm p-1 space-x-1"><button data-period="daily" class="time-filter-btn active-filter font-semibold py-2 px-4 rounded-md text-sm">Harian</button><button data-period="weekly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Pekanan</button><button data-period="monthly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Bulanan</button></div></div><div class="bg-white rounded-2xl shadow-lg overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" class="px-6 py-3">Saham</th><th scope="col" class="px-6 py-3">Tgl Rekomendasi</th><th scope="col" class="px-6 py-3 text-right">Harga Awal</th><th scope="col" class="px-6 py-3 text-right">Harga Terkini</th><th scope="col" class="px-6 py-3 text-right">Gain (%)</th></tr></thead><tbody id="performance-table-body"></tbody></table></div></div></section>
+            </div>
+            
+            <!-- Manual Analysis Tab -->
+            <div id="tab-content-manual" class="tab-content hidden">
+                <section id="manual-analysis-section">
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-bold mb-2 text-gray-700">Analisis Saham Manual</h2>
+                        <p class="text-sm text-gray-500 mb-6">Masukkan beberapa kode saham yang ingin Anda bandingkan, pisahkan dengan koma.</p>
+                        <div>
+                            <label for="manual-stock-input" class="block text-sm font-medium text-gray-700 mb-2">Kode Saham</label>
+                            <textarea id="manual-stock-input" rows="3" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: TLKM, ASII, ADRO"></textarea>
+                        </div>
+                        <div class="mt-4 text-right">
+                            <button id="manual-analyze-btn" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
+                                <i class="fas fa-search mr-2"></i> Bandingkan & Analisa
+                            </button>
+                        </div>
+                    </div>
+                    <div id="manual-analysis-result-container" class="mt-8">
+                        <div id="manual-analysis-result" class="bg-white p-6 rounded-2xl shadow-lg min-h-[10rem]">
+                            <p class="text-center text-gray-500">Hasil analisis perbandingan akan muncul di sini.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Manual Tracking Tab -->
+            <div id="tab-content-tracking" class="tab-content hidden">
+                <section id="manual-tracking-section">
+                    <div class="bg-white p-6 rounded-2xl shadow-lg mb-8">
+                        <h2 class="text-xl font-bold mb-2 text-gray-700">Tambahkan Saham ke Daftar Lacak</h2>
+                        <p class="text-sm text-gray-500 mb-6">Masukkan kode saham yang ingin Anda pantau performanya secara manual.</p>
+                        <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-4">
+                            <div class="w-full"><label for="manual-track-input" class="block text-sm font-medium text-gray-700 mb-1">Kode Saham</label><input type="text" id="manual-track-input" class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: MDKA"></div>
+                            <button id="add-manual-track-btn" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 flex-shrink-0">
+                                <i class="fas fa-plus mr-2"></i> Tambahkan
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3">Saham</th>
+                                        <th scope="col" class="px-6 py-3">Tgl Ditambahkan</th>
+                                        <th scope="col" class="px-6 py-3 text-right">Harga Awal</th>
+                                        <th scope="col" class="px-6 py-3 text-right">Harga Terkini</th>
+                                        <th scope="col" class="px-6 py-3 text-right">Gain (%)</th>
+                                        <th scope="col" class="px-6 py-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manual-performance-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </main>
+    </div>
+    
+    <div id="toast-notification" class="toast"></div>
+    
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', async function() {
+            // --- Global Variables ---
+            const stockData = [
+                { "ticker": "TLKM", "name": "Telkom Indonesia (Persero) Tbk.", "price": 3050, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ASII", "name": "Astra International Tbk.", "price": 5100, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BREN", "name": "Barito Renewables Energy Tbk", "price": 9000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AMMN", "name": "Amman Mineral Internasional Tbk", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNVR", "name": "Unilever Indonesia Tbk.", "price": 3000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ICBP", "name": "Indofood CBP Sukses Makmur Tbk.", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false}, { "ticker": "MDKA", "name": "Merdeka Copper Gold Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "ADRO", "name": "Adaro Energy Indonesia Tbk.", "price": 2700, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PTBA", "name": "Bukit Asam Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "WIFI", "name": "Solusi Sinergi Digital Tbk.", "price": 60, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "INDF", "name": "Indofood Sukses Makmur Tbk.", "price": 6200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "KLBF", "name": "Kalbe Farma Tbk.", "price": 1500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "CPIN", "name": "Charoen Pokphand Indonesia Tbk", "price": 5200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "EXCL", "name": "XL Axiata Tbk.", "price": 2300, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "JSMR", "name": "Jasa Marga (Persero) Tbk.", "price": 5000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AKRA", "name": "AKR Corporindo Tbk.", "price": 1600, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNTR", "name": "United Tractors Tbk.", "price": 23000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BRPT", "name": "Barito Pacific Tbk.", "price": 1000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "INCO", "name": "Vale Indonesia Tbk.", "price": 4000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PGAS", "name": "Perusahaan Gas Negara Tbk.", "price": 1200, "isSyariah": true, "inSpecialMonitoring": false }
+            ];
+            const GEMINI_API_KEY = ""; // Kunci API akan diinjeksi oleh lingkungan
+            const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxMMXZKQ60B7A_stn_YNPNFAtSw6-pAXJJZnu2JjCWBHGlNQGwJw3TH8V5F_3KcNGjS/exec'; 
+            const PRICE_API_URL = 'https://script.google.com/macros/s/AKfycbzn_lUgPbqVeLFqGboZth6OYBmW6ZXnQamp7s78M6yoOZK98nkXTSO4XcTxyizWTAj57Q/exec';
+            
+            // --- Core Application Logic ---
+            
+            async function fetchStockPrice(ticker) {
+                const url = `${PRICE_API_URL}?ticker=${ticker}`;
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    if (data.price && data.ticker) {
+                        const stockInfo = stockData.find(s => s.ticker === data.ticker);
+                        return { ...data, name: stockInfo?.name || data.ticker };
+                    }
+                    return null;
+                } catch (error) {
+                    console.error(`Gagal mengambil harga untuk ${ticker}:`, error);
+                    return null;
+                }
+            }
+
+            async function triggerDailyRecommendation() {
+                const statusEl = document.getElementById('ai-recommendation-status');
+                const lastRecDate = localStorage.getItem('lastRecommendationDate');
+                const today = new Date().toISOString().split('T')[0];
+                const now = new Date();
+
+                if (lastRecDate === today) {
+                    statusEl.textContent = "Rekomendasi AI untuk hari ini telah diterima.";
+                    return;
+                }
+
+                if (now.getHours() >= 8) {
+                    statusEl.textContent = "Meminta rekomendasi AI untuk hari ini...";
+                    await getAIRecommendations();
+                } else {
+                     statusEl.textContent = "Rekomendasi AI otomatis akan berjalan setelah pukul 08:00 pagi.";
+                }
+            }
+
+            async function getAIRecommendations() {
+                if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
+                    showToast("URL Google Apps Script belum dikonfigurasi.");
+                    return;
+                }
+                try {
+                    const issiTickers = stockData.filter(s => s.isSyariah && !s.inSpecialMonitoring).map(s => s.ticker).join(', ');
+                    const prompt = `Anda adalah seorang analis saham ahli. Dari daftar saham syariah (ISSI) berikut: ${issiTickers}, analisislah berdasarkan berita keuangan, laporan perusahaan, analisis pasar terkini, dan indikator teknikal (RSI, MFI, MACD, Volume, Stochastic, Moving Average). Berikan 4 saham yang paling direkomendasikan hari ini. Format jawabanmu HANYA sebagai daftar kode saham 4 huruf yang dipisahkan koma. PENTING: Saham pertama dalam daftar adalah yang paling Anda rekomendasikan. Contoh: TLKM,ADRO,ICBP,UNVR`;
+                    
+                    const recommendationText = await callGeminiAPI(prompt);
+                    const tickers = recommendationText.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length === 4);
+                    
+                    if (tickers.length === 0) {
+                        showToast("AI tidak memberikan rekomendasi saat ini. Coba lagi nanti.");
+                        return;
+                    }
+
+                    showToast(`AI merekomendasikan: ${tickers.join(', ')}. Menyimpan ke Google Sheet...`);
+                    
+                    const recommendationsToAdd = [];
+                    for (let i = 0; i < tickers.length; i++) {
+                        const ticker = tickers[i];
+                        const stockInfo = await fetchStockPrice(ticker);
+                        if(stockInfo) {
+                           recommendationsToAdd.push({
+                                ticker: stockInfo.ticker,
+                                name: stockInfo.name,
+                                initial_price: stockInfo.price,
+                                is_top_pick: i === 0,
+                            });
+                        }
+                    }
+
+                    await fetch(GOOGLE_APP_SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'addAiRecommendations', data: recommendationsToAdd }),
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    });
+                    
+                    localStorage.setItem('lastRecommendationDate', new Date().toISOString().split('T')[0]);
+                    document.getElementById('ai-recommendation-status').textContent = "Rekomendasi AI untuk hari ini berhasil disimpan!";
+                    await renderPerformance();
+
+                } catch (error) {
+                    showToast(`Gagal mendapatkan rekomendasi AI: ${error.message}`);
+                    document.getElementById('ai-recommendation-status').textContent = `Gagal mendapatkan rekomendasi AI. Coba lagi nanti.`;
+                    console.error("Error getting AI recommendation:", error);
+                }
+            }
+
+            async function handleManualAnalysis() {
+                const input = document.getElementById('manual-stock-input').value;
+                const resultContainer = document.getElementById('manual-analysis-result');
+                if (!input.trim()) { showToast("Silakan masukkan minimal satu kode saham."); return; }
+                const tickers = input.split(',').map(t => t.trim().toUpperCase()).filter(t => t);
+                resultContainer.innerHTML = `<div class="flex items-center justify-center py-8"><div class="loader"></div> <p class="ml-4 text-gray-500">AI sedang menganalisis...</p></div>`;
+                try {
+                    const prompt = `Anda adalah seorang analis teknikal dan fundamental ahli. Saya ingin Anda menganalisis dan membandingkan saham-saham berikut: ${tickers.join(', ')}. Untuk setiap saham, berikan analisis berdasarkan data terkini (asumsikan Anda memiliki akses ke data tersebut) yang mencakup: 1. Indikator Teknikal (RSI, Stochastic, MACD, MFI, Volume, Moving Average). 2. Aspek Fundamental (berita keuangan, ringkasan laporan perusahaan, analisis pasar umum). Setelah menganalisis setiap saham, berikan dua bagian kesimpulan. Pertama, bagian 'Urutan Rekomendasi' yang berisi daftar urutan saham dari yang paling direkomendasikan (peringkat 1) hingga yang kurang direkomendasikan. Kedua, bagian 'Rekomendasi Utama' yang menjelaskan secara ringkas saham mana yang menjadi pilihan teratas dan mengapa. Format jawaban Anda dengan heading tebal untuk setiap saham dan juga untuk 'Urutan Rekomendasi' dan 'Rekomendasi Utama'.`;
+                    const analysisText = await callGeminiAPI(prompt);
+                    resultContainer.innerHTML = analysisText
+                        .replace(/\*\*(.*?)\*\*/g, '<h4>$1</h4>')
+                        .replace(/\n/g, '<br>');
+                } catch (error) {
+                     resultContainer.innerHTML = `<p class="text-red-500 text-center">Terjadi kesalahan: ${error.message}</p>`;
+                     console.error("Gemini API Error:", error);
+                }
+            }
+
+            async function callGeminiAPI(prompt) {
+                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+                 const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                 if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error.message || 'Gagal berkomunikasi dengan API.'); }
+                 const result = await response.json();
+                 return result.candidates[0].content.parts[0].text;
+            }
+            
+            async function renderPerformance(period = 'daily') {
+                const tableBody = document.getElementById('performance-table-body');
+                 if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-500">URL Google Apps Script belum dikonfigurasi.</td></tr>`;
+                    return;
+                }
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Memuat data performa dari Google Sheet...</td></tr>`;
+                
+                try {
+                    const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=ai_recommendations&period=${period}`);
+                    const dataFromSheet = await response.json();
+
+                    if (!dataFromSheet || dataFromSheet.length === 0) {
+                        tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Tidak ada riwayat rekomendasi pada periode ini.</td></tr>`;
+                        return;
+                    }
+                    
+                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Memuat harga terkini...</td></tr>`;
+
+                    const performanceData = [];
+                    for (const stock of dataFromSheet) {
+                        const currentData = await fetchStockPrice(stock.ticker);
+                        const initialPrice = stock.initial_price;
+                        const recommendationDate = new Date(stock.created_at);
+                        const currentPrice = currentData ? currentData.price : initialPrice;
+                        const gain = ((currentPrice - initialPrice) / initialPrice) * 100;
+                        performanceData.push({ ...stock, date: recommendationDate, initialPrice, currentPrice, gain: parseFloat(gain.toFixed(2)) });
+                    }
+
+                    performanceData.sort((a, b) => b.date - a.date);
+                    tableBody.innerHTML = ''; 
+
+                    performanceData.forEach(data => {
+                        const row = document.createElement('tr');
+                        row.className = `bg-white border-b hover:bg-gray-50 ${data.is_top_pick ? 'top-pick-highlight' : ''}`;
+                        const gainClass = data.gain > 0 ? 'positive-gain' : (data.gain < 0 ? 'negative-gain' : 'neutral-gain');
+                        const gainIcon = data.gain > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                        row.innerHTML = `<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${data.ticker} ${data.is_top_pick ? '<i class="fas fa-star text-yellow-400 ml-1"></i>' : ''}</td><td class="px-6 py-4">${data.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.initialPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.currentPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right"><span class="font-semibold ${gainClass}">${data.gain > 0 ? '+' : ''}${data.gain.toFixed(2)}% ${data.gain !== 0 ? `<i class="fas ${gainIcon} ml-1 text-xs"></i>` : ''}</span></td>`;
+                        tableBody.appendChild(row);
+                    });
+
+                } catch (error) {
+                    console.error("Error fetching performance data:", error);
+                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-500">Gagal memuat data performa. Periksa konsol untuk detail.</td></tr>`;
+                }
+            }
+
+            // --- Manual Tracking Functions ---
+            async function addStockToManualTracking() {
+                const input = document.getElementById('manual-track-input');
+                const button = document.getElementById('add-manual-track-btn');
+                const ticker = input.value.trim().toUpperCase();
+                if (!ticker) { showToast("Silakan masukkan kode saham."); return; }
+                button.disabled = true;
+                button.innerHTML = `<div class="loader !w-5 !h-5 !border-2 mx-auto"></div>`;
+                const stockInfo = await fetchStockPrice(ticker);
+                if (!stockInfo) { 
+                    showToast(`Saham dengan kode ${ticker} tidak ditemukan atau API gagal.`); 
+                    button.disabled = false; 
+                    button.innerHTML = `<i class="fas fa-plus mr-2"></i> Tambahkan`; 
+                    return; 
+                }
+                
+                try {
+                    await fetch(GOOGLE_APP_SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'addManualStock', data: { ticker: stockInfo.ticker, initial_price: stockInfo.price } }),
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    });
+                    showToast(`${ticker} berhasil ditambahkan ke daftar lacak.`);
+                    input.value = '';
+                } catch (error) {
+                     showToast(`Gagal menambahkan ${ticker}: ${error.message}`);
+                }
+                
+                await renderManualPerformance();
+                button.disabled = false;
+                button.innerHTML = `<i class="fas fa-plus mr-2"></i> Tambahkan`;
+            }
+
+            async function removeStockFromManualTracking(id) {
+                 try {
+                     await fetch(GOOGLE_APP_SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'deleteManualStock', id: id }),
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    });
+                     showToast(`Saham berhasil dihapus.`);
+                 } catch (error) {
+                     showToast(`Gagal menghapus: ${error.message}`);
+                 }
+                 await renderManualPerformance();
+            }
+
+            async function renderManualPerformance() {
+                const tableBody = document.getElementById('manual-performance-table-body');
+                if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">URL Google Apps Script belum dikonfigurasi.</td></tr>`;
+                    return;
+                }
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat data dari Google Sheet...</td></tr>`;
+
+                try {
+                    const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=manual_tracking`);
+                    const dataFromSheet = await response.json();
+
+                    if (!dataFromSheet || dataFromSheet.length === 0) { 
+                        tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Anda belum menambahkan saham apapun ke daftar lacak.</td></tr>`; 
+                        return; 
+                    }
+                
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat harga terkini...</td></tr>`;
+                
+                    const performanceData = [];
+                    for (const stock of dataFromSheet) {
+                        const currentData = await fetchStockPrice(stock.ticker);
+                        const initialPrice = stock.initial_price;
+                        const addedDate = new Date(stock.created_at);
+                        const currentPrice = currentData ? currentData.price : initialPrice;
+                        const gain = ((currentPrice - initialPrice) / initialPrice) * 100;
+                        performanceData.push({ ...stock, id: stock.id, date: addedDate, initialPrice, currentPrice, gain: parseFloat(gain.toFixed(2)) });
+                    }
+                    
+                    tableBody.innerHTML = ''; 
+                
+                    performanceData.forEach(data => {
+                        const row = document.createElement('tr');
+                        row.className = 'bg-white border-b hover:bg-gray-50';
+                        const gainClass = data.gain > 0 ? 'positive-gain' : (data.gain < 0 ? 'negative-gain' : 'neutral-gain');
+                        const gainIcon = data.gain > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                        row.innerHTML = `<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${data.ticker}</td><td class="px-6 py-4">${data.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.initialPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.currentPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right"><span class="font-semibold ${gainClass}">${data.gain > 0 ? '+' : ''}${data.gain.toFixed(2)}% ${data.gain !== 0 ? `<i class="fas ${gainIcon} ml-1 text-xs"></i>` : ''}</span></td><td class="px-6 py-4 text-center"><button data-id="${data.id}" class="remove-manual-btn text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>`;
+                        tableBody.appendChild(row);
+                    });
+                    document.querySelectorAll('.remove-manual-btn').forEach(button => { button.addEventListener('click', (e) => removeStockFromManualTracking(e.currentTarget.dataset.id)); });
+
+                } catch (error) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Gagal memuat data. Periksa konsol untuk detail.</td></tr>`; 
+                    console.error("Error fetching manual tracking data:", error);
+                }
+            }
+            
+            function handleTabClick(event) { 
+                const tabButtons = document.querySelectorAll('.tab-btn');
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.classList.add('border-transparent', 'text-gray-500', 'font-medium');
+                    btn.classList.remove('font-semibold')
+                });
+                event.target.classList.add('active');
+                event.target.classList.remove('border-transparent', 'text-gray-500');
+                event.target.classList.add('font-semibold');
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+                const targetId = `tab-content-${event.target.id.split('-')[2]}`;
+                document.getElementById(targetId).classList.remove('hidden');
+
+                if (targetId === 'tab-content-tracking') {
+                    renderManualPerformance();
+                }
+                 if (targetId === 'tab-content-dashboard') {
+                    renderPerformance();
+                }
+            }
+            
+            function setDate() { document.getElementById('current-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
+            function showToast(message) { const toast = document.getElementById('toast-notification'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
+            
+            function initApp() {
+                if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
+                    showToast("Harap konfigurasikan URL Google Apps Script di dalam kode.");
+                }
+                
+                setDate();
+                renderPerformance();
+                triggerDailyRecommendation();
+            
+                // Event Listeners
+                document.querySelectorAll('.time-filter-btn').forEach(button => { 
+                    button.addEventListener('click', function() { 
+                        document.querySelectorAll('.time-filter-btn').forEach(btn => btn.classList.remove('active-filter', 'font-semibold')); 
+                        this.classList.add('active-filter', 'font-semibold'); 
+                        renderPerformance(this.dataset.period); 
+                    }); 
+                });
+                document.getElementById('tab-btn-dashboard').addEventListener('click', handleTabClick);
+                document.getElementById('tab-btn-manual').addEventListener('click', handleTabClick);
+                document.getElementById('tab-btn-tracking').addEventListener('click', handleTabClick);
+                document.getElementById('manual-analyze-btn').addEventListener('click', handleManualAnalysis);
+                document.getElementById('add-manual-track-btn').addEventListener('click', addStockToManualTracking);
+            
+                const getRecBtn = document.getElementById('get-ai-recommendation-btn');
+                if (getRecBtn) {
+                    getRecBtn.addEventListener('click', getAIRecommendations);
+                }
+            }
+
+            initApp();
+        });
+    </script>
+</body>
+</html>
+
