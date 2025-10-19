@@ -41,7 +41,7 @@
 
         <!-- Header -->
         <header class="mb-8">
-             <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-lg">
+             <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-lg space-y-4 md:space-y-0">
                  <div class="flex items-center space-x-4">
                     <div class="bg-blue-600 p-3 rounded-full"><i class="fas fa-chart-line text-white text-2xl"></i></div>
                     <div>
@@ -59,7 +59,7 @@
         <!-- Main Content -->
         <main>
             <!-- Tab Navigation -->
-            <div class="mb-6"><div class="border-b border-gray-200"><nav class="-mb-px flex space-x-8" aria-label="Tabs"><button id="tab-btn-dashboard" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Dashboard</button><button id="tab-btn-manual" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Analisis Manual</button><button id="tab-btn-tracking" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Lacak Manual</button></nav></div></div>
+            <div class="mb-6 overflow-x-auto"><div class="border-b border-gray-200"><nav class="-mb-px flex space-x-8" aria-label="Tabs"><button id="tab-btn-dashboard" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Dashboard</button><button id="tab-btn-manual" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Analisis Manual</button><button id="tab-btn-tracking" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Lacak Manual</button></nav></div></div>
             
             <!-- Dashboard Tab -->
             <div id="tab-content-dashboard" class="tab-content">
@@ -72,14 +72,17 @@
                 </section>
 
                 <section id="performance">
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0">
                         <h2 class="text-xl font-bold text-gray-700 mb-2 md:mb-0">Lacak Performa Rekomendasi AI</h2>
-                        <div class="flex items-center space-x-2">
+                        <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
                              <div id="time-filter" class="flex items-center bg-white rounded-lg shadow-sm p-1 space-x-1">
                                 <button data-period="daily" class="time-filter-btn active-filter font-semibold py-2 px-4 rounded-md text-sm">Harian</button>
                                 <button data-period="weekly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Pekanan</button>
                                 <button data-period="monthly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Bulanan</button>
                             </div>
+                             <button id="delete-performance-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300 w-full sm:w-auto">
+                                <i class="fas fa-trash"></i> Hapus Data
+                            </button>
                         </div>
                     </div>
                     <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -91,7 +94,7 @@
                                 <tbody id="performance-table-body"></tbody>
                             </table>
                         </div>
-                        <div id="performance-pagination" class="flex justify-between items-center mt-4 px-6 pb-4"></div>
+                        <div id="performance-pagination" class="flex flex-col sm:flex-row justify-between items-center mt-4 px-6 pb-4 space-y-2 sm:space-y-0"></div>
                     </div>
                 </section>
             </div>
@@ -107,7 +110,7 @@
                             <textarea id="manual-stock-input" rows="3" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: TLKM, ASII, ADRO"></textarea>
                         </div>
                         <div class="mt-4 text-right">
-                            <button id="manual-analyze-btn" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
+                            <button id="manual-analyze-btn" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
                                 <i class="fas fa-search mr-2"></i> Bandingkan & Analisa
                             </button>
                         </div>
@@ -149,7 +152,7 @@
                                 <tbody id="manual-performance-table-body"></tbody>
                             </table>
                         </div>
-                         <div id="manual-performance-pagination" class="flex justify-between items-center mt-4 px-6 pb-4"></div>
+                         <div id="manual-performance-pagination" class="flex flex-col sm:flex-row justify-between items-center mt-4 px-6 pb-4 space-y-2 sm:space-y-0"></div>
                     </div>
                 </section>
             </div>
@@ -158,6 +161,18 @@
     </div>
     
     <div id="toast-notification" class="toast"></div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm mx-4">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Konfirmasi Aksi</h3>
+            <p id="confirmation-message" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end space-x-4">
+                <button id="confirm-btn-no" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300">Batal</button>
+                <button id="confirm-btn-yes" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
     
     <script type="module">
         document.addEventListener('DOMContentLoaded', async function() {
@@ -203,6 +218,28 @@
                 sessionStorage.removeItem(CACHE_PREFIX + 'performance_weekly');
                 sessionStorage.removeItem(CACHE_PREFIX + 'performance_monthly');
             }
+            
+            // --- Modal Functions ---
+            function showConfirmationModal(message, onConfirm) {
+                const modal = document.getElementById('confirmation-modal');
+                document.getElementById('confirmation-message').textContent = message;
+
+                const confirmBtn = document.getElementById('confirm-btn-yes');
+                const newConfirmBtn = confirmBtn.cloneNode(true); // Remove old listeners
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+                newConfirmBtn.addEventListener('click', () => {
+                    onConfirm();
+                    hideConfirmationModal();
+                });
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            function hideConfirmationModal() {
+                document.getElementById('confirmation-modal').classList.add('hidden');
+            }
+
 
             // --- Core Application Logic ---
             async function fetchStockPrice(ticker) {
@@ -342,10 +379,10 @@
                 currentPageAI = page;
                 const tableBody = document.getElementById('performance-table-body');
                  if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
-                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-500">URL Google Apps Script belum dikonfigurasi.</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">URL Google Apps Script belum dikonfigurasi.</td></tr>`;
                     return;
                 }
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Memuat data performa...</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat data performa...</td></tr>`;
                 
                 try {
                     const cacheKey = `performance_${period}`;
@@ -358,12 +395,12 @@
                     }
                     
                     if (!dataFromSheet || dataFromSheet.length === 0) {
-                        tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Tidak ada riwayat rekomendasi pada periode ini.</td></tr>`;
+                        tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Tidak ada riwayat rekomendasi pada periode ini.</td></tr>`;
                          renderPagination('performance-pagination', 0, 0, () => {});
                         return;
                     }
                     
-                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Memuat harga terkini...</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat harga terkini...</td></tr>`;
 
                     const performanceData = [];
                     for (const stock of dataFromSheet) {
@@ -406,12 +443,12 @@
                     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
                         errorMessage = "Gagal terhubung ke Google Sheets. Pastikan skrip Anda sudah di-deploy dengan akses 'Anyone'.";
                     }
-                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-500">${errorMessage}</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">${errorMessage}</td></tr>`;
                 }
             }
             
             async function removeAiRecommendation(id) {
-                if (confirm(`Apakah Anda yakin ingin menghapus rekomendasi saham ini?`)) {
+                showConfirmationModal(`Apakah Anda yakin ingin menghapus rekomendasi saham ini?`, async () => {
                     try {
                         await fetch(GOOGLE_APP_SCRIPT_URL, {
                             method: 'POST',
@@ -427,7 +464,28 @@
                         showToast(`Gagal menghapus data: ${error.message}`);
                         console.error("Error deleting AI recommendation:", error);
                     }
-                }
+                });
+            }
+            
+            async function deletePerformanceData() {
+                const activeFilter = document.querySelector('.time-filter-btn.active-filter');
+                const period = activeFilter.dataset.period;
+                
+                showConfirmationModal(`Apakah Anda yakin ingin menghapus semua data rekomendasi AI untuk periode '${period}'?`, async () => {
+                    try {
+                        await fetch(GOOGLE_APP_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({ action: 'deleteAiRecommendations', period: period }),
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                        });
+                        showToast(`Data periode '${period}' berhasil dihapus.`);
+                        clearPerformanceCache();
+                        renderPerformance(period, 1);
+                    } catch(error) {
+                        showToast(`Gagal menghapus data: ${error.message}`);
+                        console.error("Error deleting performance data:", error);
+                    }
+                });
             }
 
 
@@ -466,18 +524,20 @@
             }
 
             async function removeStockFromManualTracking(id) {
-                 try {
-                     await fetch(GOOGLE_APP_SCRIPT_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({ action: 'deleteManualStock', id: id }),
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                    });
-                     showToast(`Saham berhasil dihapus.`);
-                     sessionStorage.removeItem(CACHE_PREFIX + 'manual_tracking');
-                 } catch (error) {
-                     showToast(`Gagal menghapus: ${error.message}`);
-                 }
-                 await renderManualPerformance(1);
+                showConfirmationModal(`Apakah Anda yakin ingin menghapus saham ini dari daftar lacak?`, async () => {
+                    try {
+                        await fetch(GOOGLE_APP_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({ action: 'deleteManualStock', id: id }),
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                        });
+                        showToast(`Saham berhasil dihapus.`);
+                        sessionStorage.removeItem(CACHE_PREFIX + 'manual_tracking');
+                        renderManualPerformance(1);
+                    } catch (error) {
+                        showToast(`Gagal menghapus: ${error.message}`);
+                    }
+                });
             }
 
             async function renderManualPerformance(page = 1) {
@@ -558,15 +618,15 @@
                 const pageInfo = `<span class="text-sm text-gray-600">Halaman ${currentPage} dari ${totalPages}</span>`;
 
                 container.innerHTML = `
-                    <div>${prevButtonHTML}</div>
-                    ${pageInfo}
-                    <div>${nextButtonHTML}</div>
+                    <div class="flex-1">${prevButtonHTML}</div>
+                    <div class="flex-1 text-center">${pageInfo}</div>
+                    <div class="flex-1 text-right">${nextButtonHTML}</div>
                 `;
                 
                 const prevButton = document.getElementById(`prev-${containerId}`);
                 const nextButton = document.getElementById(`next-${containerId}`);
 
-                if (currentPage === 1) {
+                if (currentPage <= 1) {
                     prevButton.disabled = true;
                 } else {
                     prevButton.addEventListener('click', () => pageClickHandler(currentPage - 1));
@@ -626,6 +686,8 @@
                 document.getElementById('tab-btn-tracking').addEventListener('click', handleTabClick);
                 document.getElementById('manual-analyze-btn').addEventListener('click', handleManualAnalysis);
                 document.getElementById('add-manual-track-btn').addEventListener('click', addStockToManualTracking);
+                document.getElementById('delete-performance-btn').addEventListener('click', deletePerformanceData);
+                document.getElementById('confirm-btn-no').addEventListener('click', hideConfirmationModal);
             
                 const getRecBtn = document.getElementById('get-ai-recommendation-btn');
                 if (getRecBtn) {
