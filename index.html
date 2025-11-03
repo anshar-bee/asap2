@@ -1,703 +1,430 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analisa Saham Pro (Google Sheets)</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analisa Saham Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" xintegrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
-        .positive-gain { color: #10B981; }
-        .negative-gain { color: #EF4444; }
-        .neutral-gain { color: #6B7280; }
-        .tab-btn.active { border-color: #3B82F6; color: #2563EB; font-weight: 600; }
-        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #2d3748; color: white; padding: 1rem 2rem; border-radius: 0.5rem; z-index: 100; opacity: 0; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; transform: translate(-50%, 10px); }
-        .toast.show { opacity: 1; transform: translate(-50%, 0); }
-        .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3498db; width: 40px; height: 40px; animation: spin 2s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .time-filter-btn.active-filter { background-color: #3B82F6; color: white; }
-        #manual-analysis-result h4 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
-        #manual-analysis-result p { margin-bottom: 1rem; }
-        .top-pick-highlight { background-color: #D1FAE5 !important; }
-        .top-pick-highlight td:first-child { font-weight: bold; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f0f2f5; 
+        }
+        .prose h4 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          margin-top: 1rem;
+          margin-bottom: 0.5rem;
+        }
     </style>
+    <!-- React and Babel for JSX transpilation -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Google GenAI -->
+    <script type="module">
+        import { GoogleGenAI } from 'https://esm.sh/@google/genai';
+        window.GoogleGenAI = GoogleGenAI;
+    </script>
 <script type="importmap">
 {
   "imports": {
-    "sortablejs": "https://aistudiocdn.com/sortablejs@^1.15.6",
-    "safevalues/": "https://aistudiocdn.com/safevalues@^1.2.0/",
-    "safevalues": "https://cdn.jsdelivr.net/npm/safevalues@^1.2.0/dist/mjs/index.min.js",
-    "@monaco-editor/loader": "https://aistudiocdn.com/@monaco-editor/loader@^1.6.1",
-    "markdown-it": "https://aistudiocdn.com/markdown-it@^14.1.0"
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
   }
 }
 </script>
 </head>
 <body class="text-gray-800">
+    <div id="root"></div>
 
-    <div id="app" class="container mx-auto p-4 md:p-8">
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
 
-        <!-- Header -->
-        <header class="mb-8">
-             <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-lg space-y-4 md:space-y-0">
-                 <div class="flex items-center space-x-4">
-                    <div class="bg-blue-600 p-3 rounded-full"><i class="fas fa-chart-line text-white text-2xl"></i></div>
-                    <div>
-                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Analisa Saham Pro</h1>
-                        <p id="current-date" class="text-gray-500 text-sm">Memuat data...</p>
-                    </div>
+        // --- Constants ---
+        const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwFxNhpOFF9cm1brOwAdpfvhjk-5l4g5pxX4EVtW1I1WexZmGWmWUKZjcuhQiwSU2X/exec';
+        const PRICE_API_URL = 'https://script.google.com/macros/s/AKfycbzn_lUgPbqVeLFqGboZth6OYBmW6ZXnQamp7s78M6yoOZK98nkXTSO4XcTxyizWTAj57Q/exec';
+        const ITEMS_PER_PAGE = 10;
+
+        // --- Gemini Service ---
+        const analyzeStocks = async (tickers) => {
+            const ai = new window.GoogleGenAI({ apiKey: process.env.API_KEY });
+            const prompt = `Anda adalah seorang analis teknikal dan fundamental ahli. Saya ingin Anda menganalisis dan membandingkan saham-saham berikut: ${tickers.join(', ')}. Untuk setiap saham, berikan analisis berdasarkan data terkini (asumsikan Anda memiliki akses ke data tersebut) yang mencakup: 1. Indikator Teknikal (RSI, Stochastic, MACD, MFI, Volume, Moving Average). 2. Aspek Fundamental (berita keuangan, ringkasan laporan perusahaan, analisis pasar umum). Setelah menganalisis setiap saham, berikan dua bagian kesimpulan. Pertama, bagian '**Urutan Rekomendasi**' yang berisi daftar urutan saham dari yang paling direkomendasikan (peringkat 1) hingga yang kurang direkomendasikan. Kedua, bagian '**Rekomendasi Utama**' yang menjelaskan secara ringkas saham mana yang menjadi pilihan teratas dan mengapa. Format jawaban Anda dengan heading tebal (menggunakan markdown **) untuk setiap saham dan juga untuk 'Urutan Rekomendasi' dan 'Rekomendasi Utama'.`;
+            
+            try {
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                });
+                return response.text;
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                if (error instanceof Error) {
+                    throw new Error(`Gemini API Error: ${error.message}`);
+                }
+                throw new Error("An unknown error occurred while contacting the Gemini API.");
+            }
+        };
+
+        // --- API Service ---
+        async function handleResponse(response) {
+            if (!response.ok) {
+                let errorMsg = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorBody = await response.json();
+                    errorMsg = errorBody.message || errorMsg;
+                } catch (e) { /* Ignore if body is not JSON */ }
+                throw new Error(errorMsg);
+            }
+            return response.json();
+        }
+
+        const fetchManualStocks = async () => {
+            try {
+                const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=manual_tracking`);
+                return await handleResponse(response);
+            } catch (error) {
+                console.error("Error fetching manual stocks:", error);
+                throw new Error("Gagal mengambil data dari Google Sheets. Pastikan skrip Anda sudah di-deploy dengan benar.");
+            }
+        };
+
+        const addManualStock = async (ticker, initial_price) => {
+            try {
+                const response = await fetch(GOOGLE_APP_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'addManualStock', data: { ticker, initial_price } }),
+                });
+                await handleResponse(response);
+            } catch (error) {
+                console.error("Error adding manual stock:", error);
+                throw new Error("Gagal menambahkan saham ke Google Sheets.");
+            }
+        };
+
+        const deleteManualStock = async (id) => {
+            try {
+                const response = await fetch(GOOGLE_APP_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'deleteManualStock', id: id }),
+                });
+                await handleResponse(response);
+            } catch (error) {
+                console.error("Error deleting manual stock:", error);
+                throw new Error("Gagal menghapus saham dari Google Sheets.");
+            }
+        };
+
+        const fetchCurrentPrice = async (ticker) => {
+            try {
+                const response = await fetch(`${PRICE_API_URL}?ticker=${ticker}`);
+                const data = await handleResponse(response);
+                return data.price && data.ticker ? data : null;
+            } catch (error) {
+                console.error(`Error fetching price for ${ticker}:`, error);
+                return null;
+            }
+        };
+
+        // --- Components ---
+        const Loader = ({ isButtonLoader = false }) => {
+            const sizeClasses = isButtonLoader ? 'w-5 h-5 border-2' : 'w-10 h-10 border-4';
+            return <div className={`animate-spin rounded-full border-solid border-blue-500 border-t-transparent ${sizeClasses}`}></div>;
+        };
+
+        const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+            if (totalPages <= 1) return null;
+            return (
+                <div className="flex flex-col sm:flex-row justify-between items-center mt-4 px-6 pb-4 space-y-2 sm:space-y-0">
+                    <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed">&laquo; Sebelumnya</button>
+                    <span className="text-sm text-gray-600">Halaman {currentPage} dari {totalPages}</span>
+                    <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Berikutnya &raquo;</button>
                 </div>
-                 <div class="mt-4 md:mt-0 text-sm text-gray-600 flex items-center">
-                    <i class="fab fa-google-drive mr-2 text-green-500"></i>
-                    <span>Didukung oleh Gemini & Google Sheets</span>
-                </div>
-            </div>
-        </header>
+            );
+        };
+
+        const Toast = ({ message, show }) => {
+            const toastClasses = `fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-3 px-6 rounded-lg shadow-lg z-50 transition-all duration-300 ease-in-out ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`;
+            return <div className={toastClasses}>{message}</div>;
+        };
         
-        <!-- Main Content -->
-        <main>
-            <!-- Tab Navigation -->
-            <div class="mb-6 overflow-x-auto"><div class="border-b border-gray-200"><nav class="-mb-px flex space-x-8" aria-label="Tabs"><button id="tab-btn-dashboard" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Dashboard</button><button id="tab-btn-manual" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Analisis Manual</button><button id="tab-btn-tracking" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Lacak Manual</button></nav></div></div>
-            
-            <!-- Dashboard Tab -->
-            <div id="tab-content-dashboard" class="tab-content">
-                <section id="ai-recommendation-generator" class="mb-8 bg-white p-6 rounded-2xl shadow-lg text-center">
-                    <h2 class="text-xl font-bold text-gray-800">Rekomendasi Saham Hari Ini</h2>
-                    <p id="ai-recommendation-status" class="text-gray-500 mt-2 mb-4">Menganalisis pasar untuk rekomendasi hari ini...</p>
-                    <button id="get-ai-recommendation-btn" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300">
-                        <i class="fas fa-wand-magic-sparkles mr-2"></i> Dapatkan Rekomendasi AI Hari Ini
-                    </button>
-                </section>
+        const ConfirmationModal = ({ show, message, onConfirm, onCancel }) => {
+            if (!show) return null;
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm mx-4">
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">Konfirmasi Aksi</h3>
+                        <p className="text-gray-600 mb-6">{message}</p>
+                        <div className="flex justify-end space-x-4">
+                            <button onClick={onCancel} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300">Batal</button>
+                            <button onClick={onConfirm} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Ya, Hapus</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-                <section id="performance">
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0">
-                        <h2 class="text-xl font-bold text-gray-700 mb-2 md:mb-0">Lacak Performa Rekomendasi AI</h2>
-                        <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
-                             <div id="time-filter" class="flex items-center bg-white rounded-lg shadow-sm p-1 space-x-1">
-                                <button data-period="daily" class="time-filter-btn active-filter font-semibold py-2 px-4 rounded-md text-sm">Harian</button>
-                                <button data-period="weekly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Pekanan</button>
-                                <button data-period="monthly" class="time-filter-btn py-2 px-4 rounded-md text-sm">Bulanan</button>
+        const Header = () => {
+            const [currentDate, setCurrentDate] = useState('');
+            useEffect(() => {
+                setCurrentDate(new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+            }, []);
+            return (
+                <header className="mb-8">
+                    <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-lg space-y-4 md:space-y-0">
+                        <div className="flex items-center space-x-4">
+                            <div className="bg-blue-600 p-3 rounded-full"><i className="fas fa-chart-line text-white text-2xl"></i></div>
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Analisa Saham Pro</h1>
+                                <p className="text-gray-500 text-sm">{currentDate}</p>
                             </div>
-                             <button id="delete-performance-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300 w-full sm:w-auto">
-                                <i class="fas fa-trash"></i> Hapus Data
-                            </button>
+                        </div>
+                        <div className="mt-4 md:mt-0 text-sm text-gray-600 flex items-center">
+                            <i className="fab fa-google-drive mr-2 text-green-500"></i>
+                            <span>Didukung oleh Gemini & Google Sheets</span>
                         </div>
                     </div>
-                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left text-gray-500">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
-                                    <tr><th scope="col" class="px-6 py-3">Saham</th><th scope="col" class="px-6 py-3">Tgl Rekomendasi</th><th scope="col" class="px-6 py-3 text-right">Harga Awal</th><th scope="col" class="px-6 py-3 text-right">Harga Terkini</th><th scope="col" class="px-6 py-3 text-right">Gain (%)</th><th scope="col" class="px-6 py-3 text-center">Aksi</th></tr>
-                                </thead>
-                                <tbody id="performance-table-body"></tbody>
-                            </table>
-                        </div>
-                        <div id="performance-pagination" class="flex flex-col sm:flex-row justify-between items-center mt-4 px-6 pb-4 space-y-2 sm:space-y-0"></div>
-                    </div>
-                </section>
-            </div>
+                </header>
+            );
+        };
+
+        const TabNavigation = ({ activeTab, setActiveTab }) => {
+            const getTabClasses = (tabName) => `whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tabName ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
+            return (
+                <div className="mb-6"><div className="border-b border-gray-200"><nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button className={getTabClasses('manual')} onClick={() => setActiveTab('manual')}>Analisis Manual</button>
+                    <button className={getTabClasses('tracking')} onClick={() => setActiveTab('tracking')}>Lacak Manual</button>
+                </nav></div></div>
+            );
+        };
+        
+        const ManualAnalysis = ({ showToast }) => {
+            const [stockInput, setStockInput] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [analysisResult, setAnalysisResult] = useState('');
+
+            const handleAnalysis = async () => {
+                if (!stockInput.trim()) {
+                    showToast("Silakan masukkan minimal satu kode saham."); return;
+                }
+                const tickers = stockInput.split(',').map(t => t.trim().toUpperCase()).filter(t => t);
+                if (tickers.length === 0) {
+                    showToast("Format input tidak valid. Contoh: TLKM, ASII"); return;
+                }
+                setIsLoading(true);
+                setAnalysisResult('');
+                try {
+                    const result = await analyzeStocks(tickers);
+                    const formattedResult = result.replace(/\*\*(.*?)\*\*/g, '<h4 class="text-lg font-semibold mt-4 mb-2 text-gray-800">$1</h4>').replace(/\*/g, '').replace(/\n/g, '<br />');
+                    setAnalysisResult(formattedResult);
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan tidak diketahui.';
+                    setAnalysisResult(`<p class="text-red-500 text-center">Gagal menganalisis: ${errorMessage}</p>`);
+                    showToast(`Gagal menganalisis: ${errorMessage}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
             
-            <!-- Manual Analysis Tab -->
-            <div id="tab-content-manual" class="tab-content hidden">
-                <section id="manual-analysis-section">
-                    <div class="bg-white p-6 rounded-2xl shadow-lg">
-                        <h2 class="text-xl font-bold mb-2 text-gray-700">Analisis Saham Manual</h2>
-                        <p class="text-sm text-gray-500 mb-6">Masukkan beberapa kode saham yang ingin Anda bandingkan, pisahkan dengan koma.</p>
+            return (
+                <section>
+                    <div className="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 className="text-xl font-bold mb-2 text-gray-700">Analisis Saham Manual</h2>
+                        <p className="text-sm text-gray-500 mb-6">Masukkan beberapa kode saham yang ingin Anda bandingkan, pisahkan dengan koma.</p>
                         <div>
-                            <label for="manual-stock-input" class="block text-sm font-medium text-gray-700 mb-2">Kode Saham</label>
-                            <textarea id="manual-stock-input" rows="3" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: TLKM, ASII, ADRO"></textarea>
+                            <label htmlFor="manual-stock-input" className="block text-sm font-medium text-gray-700 mb-2">Kode Saham</label>
+                            <textarea id="manual-stock-input" rows={3} className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: TLKM, ASII, ADRO" value={stockInput} onChange={(e) => setStockInput(e.target.value)} disabled={isLoading} />
                         </div>
-                        <div class="mt-4 text-right">
-                            <button id="manual-analyze-btn" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
-                                <i class="fas fa-search mr-2"></i> Bandingkan & Analisa
+                        <div className="mt-4 text-right">
+                            <button onClick={handleAnalysis} disabled={isLoading} className="w-full sm:w-auto bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center sm:inline-flex">
+                                {isLoading ? (<><Loader isButtonLoader={true} /><span className="ml-2">Menganalisis...</span></>) : (<><i className="fas fa-search mr-2"></i> Bandingkan & Analisa</>)}
                             </button>
                         </div>
                     </div>
-                    <div id="manual-analysis-result-container" class="mt-8">
-                        <div id="manual-analysis-result" class="bg-white p-6 rounded-2xl shadow-lg min-h-[10rem]">
-                            <p class="text-center text-gray-500">Hasil analisis perbandingan akan muncul di sini.</p>
-                        </div>
-                    </div>
+                    <div className="mt-8"><div className="bg-white p-6 rounded-2xl shadow-lg min-h-[10rem]">
+                        {isLoading ? (<div className="flex flex-col items-center justify-center py-8"><Loader /><p className="mt-4 text-gray-500">AI sedang menganalisis...</p></div>) : analysisResult ? (<div className="prose max-w-none text-gray-600" dangerouslySetInnerHTML={{ __html: analysisResult }} />) : (<p className="text-center text-gray-500 pt-8">Hasil analisis perbandingan akan muncul di sini.</p>)}
+                    </div></div>
                 </section>
-            </div>
+            );
+        };
 
-            <!-- Manual Tracking Tab -->
-            <div id="tab-content-tracking" class="tab-content hidden">
-                <section id="manual-tracking-section">
-                    <div class="bg-white p-6 rounded-2xl shadow-lg mb-8">
-                        <h2 class="text-xl font-bold mb-2 text-gray-700">Tambahkan Saham ke Daftar Lacak</h2>
-                        <p class="text-sm text-gray-500 mb-6">Masukkan kode saham yang ingin Anda pantau performanya secara manual.</p>
-                        <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-4">
-                            <div class="w-full"><label for="manual-track-input" class="block text-sm font-medium text-gray-700 mb-1">Kode Saham</label><input type="text" id="manual-track-input" class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: MDKA"></div>
-                            <button id="add-manual-track-btn" class="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 flex-shrink-0">
-                                <i class="fas fa-plus mr-2"></i> Tambahkan
+        const ManualTracking = ({ showToast, showModal }) => {
+            const [stocks, setStocks] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+            const [isAdding, setIsAdding] = useState(false);
+            const [newStockTicker, setNewStockTicker] = useState('');
+            const [currentPage, setCurrentPage] = useState(1);
+
+            const fetchData = useCallback(async () => {
+                setIsLoading(true);
+                try {
+                    const manualStocks = await fetchManualStocks();
+                    if (manualStocks.length === 0) {
+                        setStocks([]);
+                        setIsLoading(false);
+                        return;
+                    }
+                    const pricePromises = manualStocks.map(stock => fetchCurrentPrice(stock.ticker));
+                    const currentPrices = await Promise.all(pricePromises);
+                    const displayData = manualStocks.map(stock => {
+                        const priceData = currentPrices.find(p => p?.ticker === stock.ticker);
+                        const currentPrice = priceData ? priceData.price : stock.initial_price;
+                        const gain = stock.initial_price !== 0 ? ((currentPrice - stock.initial_price) / stock.initial_price) * 100 : 0;
+                        return { ...stock, currentPrice, gain };
+                    });
+                    setStocks(displayData);
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data.';
+                    showToast(errorMessage);
+                } finally {
+                    setIsLoading(false);
+                }
+            }, [showToast]);
+
+            useEffect(() => { fetchData(); }, [fetchData]);
+
+            const handleAddStock = async () => {
+                if (!newStockTicker.trim()) { showToast("Silakan masukkan kode saham."); return; }
+                const ticker = newStockTicker.trim().toUpperCase();
+                setIsAdding(true);
+                try {
+                    const priceData = await fetchCurrentPrice(ticker);
+                    if (!priceData) throw new Error(`Saham ${ticker} tidak ditemukan atau API harga gagal.`);
+                    await addManualStock(ticker, priceData.price);
+                    showToast(`${ticker} berhasil ditambahkan.`);
+                    setNewStockTicker('');
+                    setCurrentPage(1);
+                    fetchData();
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : 'Gagal menambahkan saham.';
+                    showToast(errorMessage);
+                } finally {
+                    setIsAdding(false);
+                }
+            };
+            
+            const handleDeleteStock = (id, ticker) => {
+                showModal(`Apakah Anda yakin ingin menghapus ${ticker} dari daftar lacak?`, async () => {
+                    try {
+                        await deleteManualStock(id);
+                        showToast(`${ticker} berhasil dihapus.`);
+                        fetchData();
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Gagal menghapus saham.';
+                        showToast(errorMessage);
+                    }
+                });
+            };
+
+            const GainDisplay = ({ gain }) => {
+                const gainClass = gain > 0 ? 'text-green-500' : gain < 0 ? 'text-red-500' : 'text-gray-500';
+                const gainIcon = gain > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                return (<span className={`font-semibold ${gainClass}`}> {gain > 0 ? '+' : ''}{gain.toFixed(2)}% {gain !== 0 && <i className={`fas ${gainIcon} ml-1 text-xs`}></i>}</span>);
+            };
+
+            const paginatedStocks = stocks.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+            const totalPages = Math.ceil(stocks.length / ITEMS_PER_PAGE);
+            
+            return (
+                <section>
+                    <div className="bg-white p-6 rounded-2xl shadow-lg mb-8">
+                        <h2 className="text-xl font-bold mb-2 text-gray-700">Tambahkan Saham ke Daftar Lacak</h2>
+                        <p className="text-sm text-gray-500 mb-6">Masukkan kode saham yang ingin Anda pantau performanya secara manual.</p>
+                        <div className="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-4">
+                            <div className="w-full">
+                                <label htmlFor="manual-track-input" className="block text-sm font-medium text-gray-700 mb-1">Kode Saham</label>
+                                <input type="text" id="manual-track-input" value={newStockTicker} onChange={(e) => setNewStockTicker(e.target.value)} disabled={isAdding} className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: MDKA" />
+                            </div>
+                            <button onClick={handleAddStock} disabled={isAdding} className="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 flex-shrink-0 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center">
+                                {isAdding ? <Loader isButtonLoader={true} /> : (<><i className="fas fa-plus mr-2"></i> Tambahkan</>)}
                             </button>
                         </div>
                     </div>
-                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left text-gray-500">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3">Saham</th>
-                                        <th scope="col" class="px-6 py-3">Tgl Ditambahkan</th>
-                                        <th scope="col" class="px-6 py-3 text-right">Harga Awal</th>
-                                        <th scope="col" class="px-6 py-3 text-right">Harga Terkini</th>
-                                        <th scope="col" class="px-6 py-3 text-right">Gain (%)</th>
-                                        <th scope="col" class="px-6 py-3 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="manual-performance-table-body"></tbody>
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr>
+                                    <th scope="col" className="px-6 py-3">Saham</th>
+                                    <th scope="col" className="px-6 py-3">Tgl Ditambahkan</th>
+                                    <th scope="col" className="px-6 py-3 text-right">Harga Awal</th>
+                                    <th scope="col" className="px-6 py-3 text-right">Harga Terkini</th>
+                                    <th scope="col" className="px-6 py-3 text-right">Gain (%)</th>
+                                    <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+                                </tr></thead>
+                                <tbody>
+                                    {isLoading ? (<tr><td colSpan="6" className="text-center p-8"><Loader /></td></tr>) : paginatedStocks.length > 0 ? (paginatedStocks.map(stock => (
+                                        <tr key={stock.id} className="bg-white border-b hover:bg-gray-50">
+                                            <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{stock.ticker}</td>
+                                            <td className="px-6 py-4">{new Date(stock.created_at).toLocaleDateString('id-ID')}</td>
+                                            <td className="px-6 py-4 text-right">Rp {Math.round(stock.initial_price).toLocaleString('id-ID')}</td>
+                                            <td className="px-6 py-4 text-right">Rp {Math.round(stock.currentPrice).toLocaleString('id-ID')}</td>
+                                            <td className="px-6 py-4 text-right"><GainDisplay gain={stock.gain} /></td>
+                                            <td className="px-6 py-4 text-center"><button onClick={() => handleDeleteStock(stock.id, stock.ticker)} className="text-red-500 hover:text-red-700"><i className="fas fa-trash"></i></button></td>
+                                        </tr>
+                                    ))) : (<tr><td colSpan="6" className="text-center p-8 text-gray-500">Belum ada saham yang dilacak.</td></tr>)}
+                                </tbody>
                             </table>
                         </div>
-                         <div id="manual-performance-pagination" class="flex flex-col sm:flex-row justify-between items-center mt-4 px-6 pb-4 space-y-2 sm:space-y-0"></div>
+                        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                     </div>
                 </section>
-            </div>
-
-        </main>
-    </div>
-    
-    <div id="toast-notification" class="toast"></div>
-
-    <!-- Confirmation Modal -->
-    <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm mx-4">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Konfirmasi Aksi</h3>
-            <p id="confirmation-message" class="text-gray-600 mb-6"></p>
-            <div class="flex justify-end space-x-4">
-                <button id="confirm-btn-no" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300">Batal</button>
-                <button id="confirm-btn-yes" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Ya, Hapus</button>
-            </div>
-        </div>
-    </div>
-    
-    <script type="module">
-        document.addEventListener('DOMContentLoaded', async function() {
-            // --- Global Variables & Configuration ---
-            const stockData = [ { "ticker": "TLKM", "name": "Telkom Indonesia (Persero) Tbk.", "price": 3050, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ASII", "name": "Astra International Tbk.", "price": 5100, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BREN", "name": "Barito Renewables Energy Tbk", "price": 9000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AMMN", "name": "Amman Mineral Internasional Tbk", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNVR", "name": "Unilever Indonesia Tbk.", "price": 3000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "ICBP", "name": "Indofood CBP Sukses Makmur Tbk.", "price": 11000, "isSyariah": true, "inSpecialMonitoring": false}, { "ticker": "MDKA", "name": "Merdeka Copper Gold Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "ADRO", "name": "Adaro Energy Indonesia Tbk.", "price": 2700, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PTBA", "name": "Bukit Asam Tbk.", "price": 2500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "WIFI", "name": "Solusi Sinergi Digital Tbk.", "price": 60, "isSyariah": true, "inSpecialMonitoring": true }, { "ticker": "INDF", "name": "Indofood Sukses Makmur Tbk.", "price": 6200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "KLBF", "name": "Kalbe Farma Tbk.", "price": 1500, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "CPIN", "name": "Charoen Pokphand Indonesia Tbk", "price": 5200, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "EXCL", "name": "XL Axiata Tbk.", "price": 2300, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "JSMR", "name": "Jasa Marga (Persero) Tbk.", "price": 5000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "AKRA", "name": "AKR Corporindo Tbk.", "price": 1600, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "UNTR", "name": "United Tractors Tbk.", "price": 23000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "BRPT", "name": "Barito Pacific Tbk.", "price": 1000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "INCO", "name": "Vale Indonesia Tbk.", "price": 4000, "isSyariah": true, "inSpecialMonitoring": false }, { "ticker": "PGAS", "name": "Perusahaan Gas Negara Tbk.", "price": 1200, "isSyariah": true, "inSpecialMonitoring": false } ];
-            const GEMINI_API_KEY = ""; 
-            const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynNx1bg-6xRHjST0CMtbEqgAY6nCOidZ_mMoA4oI6-Kt4ozsTCXZNAt7_PE4P3mvim/exec'; 
-            const PRICE_API_URL = 'https://script.google.com/macros/s/AKfycbzn_lUgPbqVeLFqGboZth6OYBmW6ZXnQamp7s78M6yoOZK98nkXTSO4XcTxyizWTAj57Q/exec';
-            
-            // --- Caching & Pagination Configuration ---
-            const CACHE_PREFIX = 'stockAnalyzerCache_';
-            const PRICE_CACHE_TTL = 2 * 60 * 1000; // 2 menit
-            const SHEET_CACHE_TTL = 5 * 60 * 1000; // 5 menit
-            const ITEMS_PER_PAGE = 10;
-            let currentPageAI = 1;
-            let currentPageManual = 1;
+            );
+        };
 
 
-            // --- Caching Functions ---
-            function setCache(key, data, ttl) {
-                const cacheKey = CACHE_PREFIX + key;
-                const item = {
-                    data: data,
-                    expiry: new Date().getTime() + ttl,
-                };
-                sessionStorage.setItem(cacheKey, JSON.stringify(item));
-            }
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('manual');
+            const [toast, setToast] = useState({ show: false, message: '' });
+            const [modal, setModal] = useState({ show: false, message: '', onConfirm: () => {} });
 
-            function getCache(key) {
-                const cacheKey = CACHE_PREFIX + key;
-                const itemStr = sessionStorage.getItem(cacheKey);
-                if (!itemStr) return null;
-                const item = JSON.parse(itemStr);
-                if (new Date().getTime() > item.expiry) {
-                    sessionStorage.removeItem(cacheKey);
-                    return null;
-                }
-                return item.data;
-            }
-            
-            function clearPerformanceCache() {
-                sessionStorage.removeItem(CACHE_PREFIX + 'performance_daily');
-                sessionStorage.removeItem(CACHE_PREFIX + 'performance_weekly');
-                sessionStorage.removeItem(CACHE_PREFIX + 'performance_monthly');
-            }
-            
-            // --- Modal Functions ---
-            function showConfirmationModal(message, onConfirm) {
-                const modal = document.getElementById('confirmation-modal');
-                document.getElementById('confirmation-message').textContent = message;
+            const showToast = useCallback((message) => {
+                setToast({ show: true, message });
+                setTimeout(() => setToast({ show: false, message: '' }), 3000);
+            }, []);
 
-                const confirmBtn = document.getElementById('confirm-btn-yes');
-                const newConfirmBtn = confirmBtn.cloneNode(true); // Remove old listeners
-                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            const showModal = useCallback((message, onConfirm) => {
+                setModal({ show: true, message, onConfirm });
+            }, []);
 
-                newConfirmBtn.addEventListener('click', () => {
-                    onConfirm();
-                    hideConfirmationModal();
-                });
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            }
+            const hideModal = useCallback(() => {
+                setModal({ show: false, message: '', onConfirm: () => {} });
+            }, []);
 
-            function hideConfirmationModal() {
-                document.getElementById('confirmation-modal').classList.add('hidden');
-            }
+            const handleConfirm = () => {
+                modal.onConfirm();
+                hideModal();
+            };
 
+            return (
+                <React.Fragment>
+                    <div className="container mx-auto p-4 md:p-8">
+                        <Header />
+                        <main>
+                            <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+                            <div className={activeTab === 'manual' ? '' : 'hidden'}>
+                                <ManualAnalysis showToast={showToast} />
+                            </div>
+                            <div className={activeTab === 'tracking' ? '' : 'hidden'}>
+                                <ManualTracking showToast={showToast} showModal={showModal} />
+                            </div>
+                        </main>
+                    </div>
+                    <Toast message={toast.message} show={toast.show} />
+                    <ConfirmationModal show={modal.show} message={modal.message} onConfirm={handleConfirm} onCancel={hideModal} />
+                </React.Fragment>
+            );
+        };
 
-            // --- Core Application Logic ---
-            async function fetchStockPrice(ticker) {
-                const cacheKey = `price_${ticker}`;
-                const cachedData = getCache(cacheKey);
-                if (cachedData) {
-                    return cachedData;
-                }
-                
-                const url = `${PRICE_API_URL}?ticker=${ticker}`;
-                try {
-                    const response = await fetch(url);
-                    const data = await response.json();
-                    if (data.price && data.ticker) {
-                        const stockInfo = stockData.find(s => s.ticker === data.ticker);
-                        const result = { ...data, name: stockInfo?.name || data.ticker };
-                        setCache(cacheKey, result, PRICE_CACHE_TTL);
-                        return result;
-                    }
-                    return null;
-                } catch (error) {
-                    console.error(`Gagal mengambil harga untuk ${ticker}:`, error);
-                    return null;
-                }
-            }
-
-            async function triggerDailyRecommendation() {
-                const statusEl = document.getElementById('ai-recommendation-status');
-                const lastRecDate = localStorage.getItem('lastRecommendationDate');
-                const today = new Date().toISOString().split('T')[0];
-                const now = new Date();
-
-                if (lastRecDate === today) {
-                    statusEl.textContent = "Rekomendasi AI untuk hari ini telah diterima.";
-                    return;
-                }
-
-                if (now.getHours() >= 8) {
-                    statusEl.textContent = "Meminta rekomendasi AI untuk hari ini...";
-                    await getAIRecommendations();
-                } else {
-                     statusEl.textContent = "Rekomendasi AI otomatis akan berjalan setelah pukul 08:00 pagi.";
-                }
-            }
-
-            async function getAIRecommendations() {
-                const lastRecDate = localStorage.getItem('lastRecommendationDate');
-                const today = new Date().toISOString().split('T')[0];
-                if (lastRecDate === today) {
-                    showToast("Rekomendasi untuk hari ini sudah dibuat.");
-                    document.getElementById('ai-recommendation-status').textContent = "Rekomendasi AI untuk hari ini telah diterima.";
-                    return;
-                }
-
-                if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
-                    showToast("URL Google Apps Script belum dikonfigurasi.");
-                    return;
-                }
-                try {
-                    const issiTickers = stockData.filter(s => s.isSyariah && !s.inSpecialMonitoring).map(s => s.ticker).join(', ');
-                    const prompt = `Anda adalah seorang analis saham ahli. Dari daftar saham syariah (ISSI) berikut: ${issiTickers}, analisislah berdasarkan berita keuangan, laporan perusahaan, analisis pasar terkini, dan indikator teknikal (RSI, MFI, MACD, Volume, Stochastic, Moving Average). Berikan 4 saham yang paling direkomendasikan hari ini. Format jawabanmu HANYA sebagai daftar kode saham 4 huruf yang dipisahkan koma. PENTING: Saham pertama dalam daftar adalah yang paling Anda rekomendasikan. Contoh: TLKM,ADRO,ICBP,UNVR`;
-                    
-                    const recommendationText = await callGeminiAPI(prompt);
-                    const tickers = recommendationText.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length === 4);
-                    
-                    if (tickers.length === 0) {
-                        showToast("AI tidak memberikan rekomendasi saat ini. Coba lagi nanti.");
-                        return;
-                    }
-
-                    showToast(`AI merekomendasikan: ${tickers.join(', ')}. Menyimpan ke Google Sheet...`);
-                    
-                    const recommendationsToAdd = [];
-                    for (let i = 0; i < tickers.length; i++) {
-                        const ticker = tickers[i];
-                        const stockInfo = await fetchStockPrice(ticker);
-                        if(stockInfo) {
-                           recommendationsToAdd.push({
-                                ticker: stockInfo.ticker,
-                                name: stockInfo.name,
-                                initial_price: stockInfo.price,
-                                is_top_pick: i === 0,
-                            });
-                        }
-                    }
-
-                    await fetch(GOOGLE_APP_SCRIPT_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({ action: 'addAiRecommendations', data: recommendationsToAdd }),
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                    });
-                    
-                    localStorage.setItem('lastRecommendationDate', new Date().toISOString().split('T')[0]);
-                    clearPerformanceCache();
-                    document.getElementById('ai-recommendation-status').textContent = "Rekomendasi AI untuk hari ini berhasil disimpan!";
-                    await renderPerformance('daily', 1);
-
-                } catch (error) {
-                    let errorMessage = `Gagal mendapatkan rekomendasi AI: ${error.message}`;
-                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                        errorMessage = "Gagal terhubung ke Google Sheets. Pastikan skrip Anda sudah di-deploy dengan akses 'Anyone'.";
-                    }
-                    showToast(errorMessage);
-                    document.getElementById('ai-recommendation-status').textContent = `Gagal mendapatkan rekomendasi AI. Coba lagi nanti.`;
-                    console.error("Error getting AI recommendation:", error);
-                }
-            }
-
-            async function handleManualAnalysis() {
-                const input = document.getElementById('manual-stock-input').value;
-                const resultContainer = document.getElementById('manual-analysis-result');
-                if (!input.trim()) { showToast("Silakan masukkan minimal satu kode saham."); return; }
-                const tickers = input.split(',').map(t => t.trim().toUpperCase()).filter(t => t);
-                resultContainer.innerHTML = `<div class="flex items-center justify-center py-8"><div class="loader"></div> <p class="ml-4 text-gray-500">AI sedang menganalisis...</p></div>`;
-                try {
-                    const prompt = `Anda adalah seorang analis teknikal dan fundamental ahli. Saya ingin Anda menganalisis dan membandingkan saham-saham berikut: ${tickers.join(', ')}. Untuk setiap saham, berikan analisis berdasarkan data terkini (asumsikan Anda memiliki akses ke data tersebut) yang mencakup: 1. Indikator Teknikal (RSI, Stochastic, MACD, MFI, Volume, Moving Average). 2. Aspek Fundamental (berita keuangan, ringkasan laporan perusahaan, analisis pasar umum). Setelah menganalisis setiap saham, berikan dua bagian kesimpulan. Pertama, bagian 'Urutan Rekomendasi' yang berisi daftar urutan saham dari yang paling direkomendasikan (peringkat 1) hingga yang kurang direkomendasikan. Kedua, bagian 'Rekomendasi Utama' yang menjelaskan secara ringkas saham mana yang menjadi pilihan teratas dan mengapa. Format jawaban Anda dengan heading tebal untuk setiap saham dan juga untuk 'Urutan Rekomendasi' dan 'Rekomendasi Utama'.`;
-                    const analysisText = await callGeminiAPI(prompt);
-                    resultContainer.innerHTML = analysisText
-                        .replace(/\*\*(.*?)\*\*/g, '<h4>$1</h4>')
-                        .replace(/\n/g, '<br>');
-                } catch (error) {
-                     resultContainer.innerHTML = `<p class="text-red-500 text-center">Terjadi kesalahan: ${error.message}</p>`;
-                     console.error("Gemini API Error:", error);
-                }
-            }
-
-            async function callGeminiAPI(prompt) {
-                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
-                 const payload = { contents: [{ parts: [{ text: prompt }] }] };
-                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                 if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error.message || 'Gagal berkomunikasi dengan API.'); }
-                 const result = await response.json();
-                 return result.candidates[0].content.parts[0].text;
-            }
-            
-            async function renderPerformance(period = 'daily', page = 1) {
-                currentPageAI = page;
-                const tableBody = document.getElementById('performance-table-body');
-                 if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
-                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">URL Google Apps Script belum dikonfigurasi.</td></tr>`;
-                    return;
-                }
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat data performa...</td></tr>`;
-                
-                try {
-                    const cacheKey = `performance_${period}`;
-                    let dataFromSheet = getCache(cacheKey);
-
-                    if (!dataFromSheet) {
-                        const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=ai_recommendations&period=${period}`);
-                        dataFromSheet = await response.json();
-                        setCache(cacheKey, dataFromSheet, SHEET_CACHE_TTL);
-                    }
-                    
-                    if (!dataFromSheet || dataFromSheet.length === 0) {
-                        tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Tidak ada riwayat rekomendasi pada periode ini.</td></tr>`;
-                         renderPagination('performance-pagination', 0, 0, () => {});
-                        return;
-                    }
-                    
-                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat harga terkini...</td></tr>`;
-
-                    const performanceData = [];
-                    for (const stock of dataFromSheet) {
-                        const currentData = await fetchStockPrice(stock.ticker);
-                        const initialPrice = stock.initial_price;
-                        const recommendationDate = new Date(stock.created_at);
-                        const currentPrice = currentData ? currentData.price : initialPrice;
-                        const gain = ((currentPrice - initialPrice) / initialPrice) * 100;
-                        performanceData.push({ ...stock, date: recommendationDate, initialPrice, currentPrice, gain: parseFloat(gain.toFixed(2)) });
-                    }
-
-                    performanceData.sort((a, b) => b.date - a.date);
-                    
-                    const totalItems = performanceData.length;
-                    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-                    const startIndex = (page - 1) * ITEMS_PER_PAGE;
-                    const endIndex = startIndex + ITEMS_PER_PAGE;
-                    const paginatedData = performanceData.slice(startIndex, endIndex);
-
-                    tableBody.innerHTML = ''; 
-
-                    paginatedData.forEach(data => {
-                        const row = document.createElement('tr');
-                        row.className = `bg-white border-b hover:bg-gray-50 ${data.is_top_pick ? 'top-pick-highlight' : ''}`;
-                        const gainClass = data.gain > 0 ? 'positive-gain' : (data.gain < 0 ? 'negative-gain' : 'neutral-gain');
-                        const gainIcon = data.gain > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
-                        row.innerHTML = `<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${data.ticker} ${data.is_top_pick ? '<i class="fas fa-star text-yellow-400 ml-1"></i>' : ''}</td><td class="px-6 py-4">${data.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.initialPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.currentPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right"><span class="font-semibold ${gainClass}">${data.gain > 0 ? '+' : ''}${data.gain.toFixed(2)}% ${data.gain !== 0 ? `<i class="fas ${gainIcon} ml-1 text-xs"></i>` : ''}</span></td><td class="px-6 py-4 text-center"><button data-id="${data.id}" class="remove-ai-btn text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>`;
-                        tableBody.appendChild(row);
-                    });
-
-                    document.querySelectorAll('.remove-ai-btn').forEach(button => {
-                        button.addEventListener('click', (e) => removeAiRecommendation(e.currentTarget.dataset.id));
-                    });
-                    
-                    renderPagination('performance-pagination', currentPageAI, totalPages, (newPage) => renderPerformance(period, newPage));
-
-                } catch (error) {
-                    console.error("Error fetching performance data:", error);
-                     let errorMessage = "Gagal memuat data performa. Periksa konsol untuk detail.";
-                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                        errorMessage = "Gagal terhubung ke Google Sheets. Pastikan skrip Anda sudah di-deploy dengan akses 'Anyone'.";
-                    }
-                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">${errorMessage}</td></tr>`;
-                }
-            }
-            
-            async function removeAiRecommendation(id) {
-                showConfirmationModal(`Apakah Anda yakin ingin menghapus rekomendasi saham ini?`, async () => {
-                    try {
-                        await fetch(GOOGLE_APP_SCRIPT_URL, {
-                            method: 'POST',
-                            body: JSON.stringify({ action: 'deleteAiRecommendation', id: id }),
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                        });
-                        showToast(`Rekomendasi berhasil dihapus.`);
-                        clearPerformanceCache();
-                        const activeFilter = document.querySelector('.time-filter-btn.active-filter');
-                        const period = activeFilter.dataset.period;
-                        renderPerformance(period, currentPageAI); // Re-render the current page
-                    } catch(error) {
-                        showToast(`Gagal menghapus data: ${error.message}`);
-                        console.error("Error deleting AI recommendation:", error);
-                    }
-                });
-            }
-            
-            async function deletePerformanceData() {
-                const activeFilter = document.querySelector('.time-filter-btn.active-filter');
-                const period = activeFilter.dataset.period;
-                
-                showConfirmationModal(`Apakah Anda yakin ingin menghapus semua data rekomendasi AI untuk periode '${period}'?`, async () => {
-                    try {
-                        await fetch(GOOGLE_APP_SCRIPT_URL, {
-                            method: 'POST',
-                            body: JSON.stringify({ action: 'deleteAiRecommendations', period: period }),
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                        });
-                        showToast(`Data periode '${period}' berhasil dihapus.`);
-                        clearPerformanceCache();
-                        renderPerformance(period, 1);
-                    } catch(error) {
-                        showToast(`Gagal menghapus data: ${error.message}`);
-                        console.error("Error deleting performance data:", error);
-                    }
-                });
-            }
-
-
-            // --- Manual Tracking Functions ---
-            async function addStockToManualTracking() {
-                const input = document.getElementById('manual-track-input');
-                const button = document.getElementById('add-manual-track-btn');
-                const ticker = input.value.trim().toUpperCase();
-                if (!ticker) { showToast("Silakan masukkan kode saham."); return; }
-                button.disabled = true;
-                button.innerHTML = `<div class="loader !w-5 !h-5 !border-2 mx-auto"></div>`;
-                const stockInfo = await fetchStockPrice(ticker);
-                if (!stockInfo) { 
-                    showToast(`Saham dengan kode ${ticker} tidak ditemukan atau API gagal.`); 
-                    button.disabled = false; 
-                    button.innerHTML = `<i class="fas fa-plus mr-2"></i> Tambahkan`; 
-                    return; 
-                }
-                
-                try {
-                    await fetch(GOOGLE_APP_SCRIPT_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({ action: 'addManualStock', data: { ticker: stockInfo.ticker, initial_price: stockInfo.price } }),
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                    });
-                    showToast(`${ticker} berhasil ditambahkan ke daftar lacak.`);
-                    sessionStorage.removeItem(CACHE_PREFIX + 'manual_tracking');
-                    input.value = '';
-                } catch (error) {
-                     showToast(`Gagal menambahkan ${ticker}: ${error.message}`);
-                }
-                
-                await renderManualPerformance(1);
-                button.disabled = false;
-                button.innerHTML = `<i class="fas fa-plus mr-2"></i> Tambahkan`;
-            }
-
-            async function removeStockFromManualTracking(id) {
-                showConfirmationModal(`Apakah Anda yakin ingin menghapus saham ini dari daftar lacak?`, async () => {
-                    try {
-                        await fetch(GOOGLE_APP_SCRIPT_URL, {
-                            method: 'POST',
-                            body: JSON.stringify({ action: 'deleteManualStock', id: id }),
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                        });
-                        showToast(`Saham berhasil dihapus.`);
-                        sessionStorage.removeItem(CACHE_PREFIX + 'manual_tracking');
-                        renderManualPerformance(1);
-                    } catch (error) {
-                        showToast(`Gagal menghapus: ${error.message}`);
-                    }
-                });
-            }
-
-            async function renderManualPerformance(page = 1) {
-                currentPageManual = page;
-                const tableBody = document.getElementById('manual-performance-table-body');
-                if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
-                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">URL Google Apps Script belum dikonfigurasi.</td></tr>`;
-                    return;
-                }
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat data dari Google Sheet...</td></tr>`;
-
-                try {
-                    const cacheKey = 'manual_tracking';
-                    let dataFromSheet = getCache(cacheKey);
-                    if (!dataFromSheet) {
-                        const response = await fetch(`${GOOGLE_APP_SCRIPT_URL}?sheet=manual_tracking`);
-                        dataFromSheet = await response.json();
-                        setCache(cacheKey, dataFromSheet, SHEET_CACHE_TTL);
-                    }
-
-                    if (!dataFromSheet || dataFromSheet.length === 0) { 
-                        tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Anda belum menambahkan saham apapun ke daftar lacak.</td></tr>`; 
-                        renderPagination('manual-performance-pagination', 0, 0, () => {});
-                        return; 
-                    }
-                
-                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Memuat harga terkini...</td></tr>`;
-                
-                    const performanceData = [];
-                    for (const stock of dataFromSheet) {
-                        const currentData = await fetchStockPrice(stock.ticker);
-                        const initialPrice = stock.initial_price;
-                        const addedDate = new Date(stock.created_at);
-                        const currentPrice = currentData ? currentData.price : initialPrice;
-                        const gain = ((currentPrice - initialPrice) / initialPrice) * 100;
-                        performanceData.push({ ...stock, id: stock.id, date: addedDate, initialPrice, currentPrice, gain: parseFloat(gain.toFixed(2)) });
-                    }
-                    
-                    const totalItems = performanceData.length;
-                    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-                    const startIndex = (page - 1) * ITEMS_PER_PAGE;
-                    const endIndex = startIndex + ITEMS_PER_PAGE;
-                    const paginatedData = performanceData.slice(startIndex, endIndex);
-
-                    tableBody.innerHTML = ''; 
-                
-                    paginatedData.forEach(data => {
-                        const row = document.createElement('tr');
-                        row.className = 'bg-white border-b hover:bg-gray-50';
-                        const gainClass = data.gain > 0 ? 'positive-gain' : (data.gain < 0 ? 'negative-gain' : 'neutral-gain');
-                        const gainIcon = data.gain > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
-                        row.innerHTML = `<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${data.ticker}</td><td class="px-6 py-4">${data.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.initialPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right">Rp ${Math.round(data.currentPrice).toLocaleString('id-ID')}</td><td class="px-6 py-4 text-right"><span class="font-semibold ${gainClass}">${data.gain > 0 ? '+' : ''}${data.gain.toFixed(2)}% ${data.gain !== 0 ? `<i class="fas ${gainIcon} ml-1 text-xs"></i>` : ''}</span></td><td class="px-6 py-4 text-center"><button data-id="${data.id}" class="remove-manual-btn text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>`;
-                        tableBody.appendChild(row);
-                    });
-                    document.querySelectorAll('.remove-manual-btn').forEach(button => { button.addEventListener('click', (e) => removeStockFromManualTracking(e.currentTarget.dataset.id)); });
-                    renderPagination('manual-performance-pagination', currentPageManual, totalPages, (newPage) => renderManualPerformance(newPage));
-
-                } catch (error) {
-                    let errorMessage = "Gagal memuat data. Periksa konsol untuk detail.";
-                    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                        errorMessage = "Gagal terhubung ke Google Sheets. Pastikan skrip Anda sudah di-deploy dengan akses 'Anyone'.";
-                    }
-                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">${errorMessage}</td></tr>`; 
-                    console.error("Error fetching manual tracking data:", error);
-                }
-            }
-            
-            function renderPagination(containerId, currentPage, totalPages, pageClickHandler) {
-                const container = document.getElementById(containerId);
-                if (!container) return;
-                container.innerHTML = '';
-
-                if (totalPages <= 1) return;
-
-                let prevButtonHTML = `<button id="prev-${containerId}" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed">&laquo; Sebelumnya</button>`;
-                let nextButtonHTML = `<button id="next-${containerId}" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Berikutnya &raquo;</button>`;
-                
-                const pageInfo = `<span class="text-sm text-gray-600">Halaman ${currentPage} dari ${totalPages}</span>`;
-
-                container.innerHTML = `
-                    <div class="flex-1">${prevButtonHTML}</div>
-                    <div class="flex-1 text-center">${pageInfo}</div>
-                    <div class="flex-1 text-right">${nextButtonHTML}</div>
-                `;
-                
-                const prevButton = document.getElementById(`prev-${containerId}`);
-                const nextButton = document.getElementById(`next-${containerId}`);
-
-                if (currentPage <= 1) {
-                    prevButton.disabled = true;
-                } else {
-                    prevButton.addEventListener('click', () => pageClickHandler(currentPage - 1));
-                }
-
-                if (currentPage >= totalPages) {
-                    nextButton.disabled = true;
-                } else {
-                    nextButton.addEventListener('click', () => pageClickHandler(currentPage + 1));
-                }
-            }
-
-            function handleTabClick(event) { 
-                const tabButtons = document.querySelectorAll('.tab-btn');
-                tabButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.classList.add('border-transparent', 'text-gray-500', 'font-medium');
-                    btn.classList.remove('font-semibold')
-                });
-                event.target.classList.add('active');
-                event.target.classList.remove('border-transparent', 'text-gray-500');
-                event.target.classList.add('font-semibold');
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-                const targetId = `tab-content-${event.target.id.split('-')[2]}`;
-                document.getElementById(targetId).classList.remove('hidden');
-
-                if (targetId === 'tab-content-tracking') {
-                    renderManualPerformance(1);
-                }
-                 if (targetId === 'tab-content-dashboard') {
-                    renderPerformance('daily', 1);
-                }
-            }
-            
-            function setDate() { document.getElementById('current-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
-            function showToast(message) { const toast = document.getElementById('toast-notification'); toast.textContent = message; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
-            
-            function initApp() {
-                if (GOOGLE_APP_SCRIPT_URL.includes('PASTE_YOUR_GOOGLE_APP_SCRIPT_WEB_APP_URL_HERE')) {
-                    showToast("Harap konfigurasikan URL Google Apps Script di dalam kode.");
-                }
-                
-                setDate();
-                renderPerformance(undefined, 1);
-                triggerDailyRecommendation();
-            
-                // Event Listeners
-                document.querySelectorAll('.time-filter-btn').forEach(button => { 
-                    button.addEventListener('click', function() { 
-                        document.querySelectorAll('.time-filter-btn').forEach(btn => btn.classList.remove('active-filter', 'font-semibold')); 
-                        this.classList.add('active-filter', 'font-semibold'); 
-                        renderPerformance(this.dataset.period, 1); 
-                    }); 
-                });
-                document.getElementById('tab-btn-dashboard').addEventListener('click', handleTabClick);
-                document.getElementById('tab-btn-manual').addEventListener('click', handleTabClick);
-                document.getElementById('tab-btn-tracking').addEventListener('click', handleTabClick);
-                document.getElementById('manual-analyze-btn').addEventListener('click', handleManualAnalysis);
-                document.getElementById('add-manual-track-btn').addEventListener('click', addStockToManualTracking);
-                document.getElementById('delete-performance-btn').addEventListener('click', deletePerformanceData);
-                document.getElementById('confirm-btn-no').addEventListener('click', hideConfirmationModal);
-            
-                const getRecBtn = document.getElementById('get-ai-recommendation-btn');
-                if (getRecBtn) {
-                    getRecBtn.addEventListener('click', getAIRecommendations);
-                }
-            }
-
-            initApp();
-        });
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
     </script>
 </body>
 </html>
-
